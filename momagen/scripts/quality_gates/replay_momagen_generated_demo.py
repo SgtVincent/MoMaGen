@@ -10,12 +10,14 @@ from pathlib import Path
 from copy import deepcopy
 
 import h5py
+import imageio.v2 as imageio
 import numpy as np
 import torch as th
 
 import omnigibson as og
 from omnigibson.macros import gm
 from omnigibson.object_states import ToggledOn
+import omnigibson.utils.transform_utils as T
 
 import momagen.utils.robomimic_utils as RobomimicUtils
 
@@ -177,6 +179,60 @@ def write_payload(path, payload):
     os.replace(tmp_path,path)
 
 
+def _camera_quat_looking_at(cam_pos, target):
+    forward = np.asarray(target, dtype=np.float32) - np.asarray(cam_pos, dtype=np.float32)
+    forward = forward / max(float(np.linalg.norm(forward)), 1e-6)
+    up = np.asarray([0.0, 0.0, 1.0], dtype=np.float32)
+    right = np.cross(forward, up)
+    if np.linalg.norm(right) < 1e-6:
+        right = np.asarray([1.0, 0.0, 0.0], dtype=np.float32)
+    right = right / max(float(np.linalg.norm(right)), 1e-6)
+    corrected_up = np.cross(right, forward)
+    corrected_up = corrected_up / max(float(np.linalg.norm(corrected_up)), 1e-6)
+    # USD camera looks along local -Z; columns are local axes in world frame.
+    rot = th.tensor(np.stack([right, corrected_up, -forward], axis=1), dtype=th.float32)
+    return T.mat2quat(rot)
+
+
+def _set_review_camera(env, target_objects=None):
+    if not target_objects:
+        return
+    og_env = getattr(env, 'env', env)
+    target_obj = None
+    target_names = set(target_objects)
+    for obj in getattr(og_env.scene, 'objects', []):
+        if obj.name in target_names:
+            target_obj = obj
+            break
+    if target_obj is None:
+        return
+    target_pos = _to_list(target_obj.get_position_orientation()[0])
+    target = np.asarray(target_pos, dtype=np.float32) + np.asarray([0.0, 0.0, 0.25], dtype=np.float32)
+    cam_pos = target + np.asarray([-1.15, -1.25, 0.85], dtype=np.float32)
+    quat = _camera_quat_looking_at(cam_pos, target)
+    og.sim.viewer_camera.set_position_orientation(
+        position=th.tensor(cam_pos, dtype=th.float32),
+        orientation=quat,
+    )
+
+
+def _capture_frame(env, target_objects=None):
+    _set_review_camera(env, target_objects=target_objects)
+    for _ in range(3):
+        og.sim.render()
+    frame = og.sim.viewer_camera.get_obs()[0]['rgb']
+    if hasattr(frame, 'detach'):
+        frame = frame.detach().cpu().numpy()
+    frame = np.asarray(frame)
+    if frame.dtype != np.uint8:
+        if np.issubdtype(frame.dtype, np.floating):
+            scale = 255.0 if frame.max(initial=0) <= 1.0 else 1.0
+            frame = np.clip(frame * scale, 0, 255).astype(np.uint8)
+        else:
+            frame = np.clip(frame, 0, 255).astype(np.uint8)
+    return frame[..., :3]
+
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--dataset', required=True)
@@ -187,6 +243,9 @@ def main():
     ap.add_argument('--init-curobo', action='store_true')
     ap.add_argument('--call-wrapper-reset', action='store_true', help='Call EnvOmniGibson.reset() before loading states[0]. Disabled by default because replay restores the exact HDF5 initial state.')
     ap.add_argument('--target-object', action='append', default=None, help='Only record diagnostics for this object name. Can be repeated.')
+    ap.add_argument('--video-output', default=None, help='Optional MP4 path for rendered replay video.')
+    ap.add_argument('--video-every', type=int, default=1, help='Append one video frame every N replay steps.')
+    ap.add_argument('--video-fps', type=int, default=20)
     args=ap.parse_args()
     status_path=f"{args.output}.status.json"
     status={'dataset':args.dataset,'output':args.output,'stage':'starting'}
@@ -210,6 +269,7 @@ def main():
     status['stage']='env_created'
     write_payload(status_path,status)
     records=[]
+    video_writer=None
     try:
         # Reset then restore exact generated initial state.
         if args.call_wrapper_reset:
@@ -219,14 +279,26 @@ def main():
         status['stage']='loading_initial_state'
         write_payload(status_path,status)
         og.sim.load_state(th.as_tensor(states[args.start]), serialized=True)
+        if args.video_output:
+            Path(args.video_output).parent.mkdir(parents=True, exist_ok=True)
+            video_writer=imageio.get_writer(args.video_output, fps=args.video_fps)
+            # Let the restored state propagate into the viewer camera before the first frame.
+            for _ in range(3):
+                og.sim.render()
+            video_writer.append_data(_capture_frame(env, target_objects=target_objects))
         for i in range(args.start, end):
             status.update({'stage':'replaying','current_step':int(i),'num_records':len(records)})
             write_payload(status_path,status)
             if i == args.start or ((i-args.start) % max(1,args.snapshot_every)==0):
                 records.append(_snapshot(env, i, ref_state=states[i], target_objects=target_objects))
             env.step(actions[i])
+            if video_writer is not None and ((i - args.start + 1) % max(1,args.video_every)==0):
+                video_writer.append_data(_capture_frame(env, target_objects=target_objects))
         records.append(_snapshot(env, end, ref_state=states[end] if end < len(states) else None, target_objects=target_objects))
-        payload={'dataset':args.dataset,'start':args.start,'end':end,'summary':summarize(records),'records':records}
+        if video_writer is not None:
+            video_writer.close()
+            video_writer=None
+        payload={'dataset':args.dataset,'start':args.start,'end':end,'video_output':args.video_output,'summary':summarize(records),'records':records}
         write_payload(args.output,payload)
         status.update({'stage':'completed','num_records':len(records),'summary':payload['summary']})
         write_payload(status_path,status)
@@ -250,6 +322,11 @@ def main():
         sys.stderr.flush()
         raise
     finally:
+        if video_writer is not None:
+            try:
+                video_writer.close()
+            except Exception:
+                pass
         try:
             status['stage']='closing_env'
             write_payload(status_path,status)

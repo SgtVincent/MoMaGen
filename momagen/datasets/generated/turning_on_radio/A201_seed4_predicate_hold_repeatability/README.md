@@ -9,6 +9,8 @@ BEHAVIOR-1K `turning_on_radio` task.
 - Standard generation result: `success_rate=100.0`, `num_success=1`,
   `ep_lengths=[811]`
 - Replay gate verdict: `admit_candidate_after_human_review`
+- Human semantic review: positive for the `780..811` press / contact window;
+  the video shows a plausible switch-touching motion.
 - Main caveat: the quality record shows the task predicate is already true at
   Phase 2 entry, followed by a Phase 2 TrajOpt failure. Treat this as a
   candidate requiring semantic review, not as an automatically admitted training
@@ -23,11 +25,20 @@ The action replay admission gate checks three windows:
 - `A201_replay_press_780_811_overlap_diag.json`: long pre-contact / press
   window, reproduces the 5-step toggle hold and reaches `ToggledOn=True` at
   step `811`
+- `A201_replay_fuller_699_811_headless_diag.json`: fuller Phase 1 tail /
+  post-arm-MP window, reproduces the final toggle with
+  `first_can_toggle_step=809`, `max_robot_can_toggle_steps=5`, and
+  `ToggledOn=True` at step `811`
 - `A201_replay_press_805_811_overlap_diag.json`: near-contact checkpoint,
   also reproduces the 5-step hold and reaches `ToggledOn=True` at step `811`
 
 The admission gate summary is in
 `quality_gate/A201_action_replay_admission_gate_v1.json`.
+
+The fuller-window diagnostic was generated in headless mode because the local
+Kit viewer path intermittently fails during swapchain initialization. This is a
+video/display environment issue, not a replay failure: the headless replay
+completed and reproduced the toggle.
 
 ## Contents
 
