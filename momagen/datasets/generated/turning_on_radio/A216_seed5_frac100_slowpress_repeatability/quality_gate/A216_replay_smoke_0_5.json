@@ -1,0 +1,1468 @@
+{
+  "dataset": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/demo_src_r1_turning_on_radio_task_D0/demo.hdf5",
+  "start": 0,
+  "end": 5,
+  "video_output": null,
+  "summary": {
+    "num_records": 6,
+    "first_task_success_step": 0,
+    "first_toggle_value_step": null,
+    "first_can_toggle_step": null,
+    "first_primary_overlap_step": null,
+    "max_robot_can_toggle_steps": 0,
+    "best_left_finger_dist": {
+      "step": 5,
+      "object": "radio_89",
+      "dist": 1.8739698257991348,
+      "link": "robot_r1:left_gripper_finger_link2"
+    },
+    "state_error": {
+      "max_abs_max": 0.00703144446015358,
+      "mean_abs_max": 2.2001360318385648e-05,
+      "l2_max": 0.01125381369117526,
+      "shape_mismatch_steps": []
+    }
+  },
+  "records": [
+    {
+      "step": 0,
+      "success": {
+        "task": true
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 0,
+          "obj_in_finger_contact_objs": false,
+          "marker_pos": [
+            3.531797409057617,
+            4.79573917388916,
+            0.5166338682174683
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 1.8912847196612483
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2",
+              "dist": 1.7324742347910915
+            }
+          },
+          "overlap_primary_hit": false,
+          "overlap_first_hit_radius": null,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": false,
+              "num_hits": 6,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": false,
+              "num_hits": 7,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": false,
+              "num_hits": 9,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 1.3676308991921086e-06,
+        "mean_abs": 4.5586165250692535e-09,
+        "max_abs": 4.76837158203125e-07
+      }
+    },
+    {
+      "step": 1,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 0,
+          "obj_in_finger_contact_objs": false,
+          "marker_pos": [
+            3.531797409057617,
+            4.79573917388916,
+            0.5166338682174683
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 1.891285771852025
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2",
+              "dist": 1.732474492975403
+            }
+          },
+          "overlap_primary_hit": false,
+          "overlap_first_hit_radius": null,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": false,
+              "num_hits": 6,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": false,
+              "num_hits": 7,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": false,
+              "num_hits": 9,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 0.004903758599241373,
+        "mean_abs": 1.0084015871442351e-05,
+        "max_abs": 0.0029549323371611536
+      }
+    },
+    {
+      "step": 2,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 0,
+          "obj_in_finger_contact_objs": false,
+          "marker_pos": [
+            3.531797409057617,
+            4.79573917388916,
+            0.5166338682174683
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 1.8886702621331861
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2",
+              "dist": 1.7275449883435843
+            }
+          },
+          "overlap_primary_hit": false,
+          "overlap_first_hit_radius": null,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": false,
+              "num_hits": 6,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": false,
+              "num_hits": 7,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": false,
+              "num_hits": 9,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 0.0009412735123444182,
+        "mean_abs": 2.238264219096437e-06,
+        "max_abs": 0.0006935149431228638
+      }
+    },
+    {
+      "step": 3,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 0,
+          "obj_in_finger_contact_objs": false,
+          "marker_pos": [
+            3.531797409057617,
+            4.79573917388916,
+            0.5166338682174683
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 1.8809766565066728
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2",
+              "dist": 1.7146426373741623
+            }
+          },
+          "overlap_primary_hit": false,
+          "overlap_first_hit_radius": null,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": false,
+              "num_hits": 6,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": false,
+              "num_hits": 7,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": false,
+              "num_hits": 9,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 0.0008480635655904533,
+        "mean_abs": 1.1869936751284994e-06,
+        "max_abs": 0.0007517337799072266
+      }
+    },
+    {
+      "step": 4,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 0,
+          "obj_in_finger_contact_objs": false,
+          "marker_pos": [
+            3.531797409057617,
+            4.79573917388916,
+            0.5166338682174683
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 1.8801078595995007
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2",
+              "dist": 1.713295982327263
+            }
+          },
+          "overlap_primary_hit": false,
+          "overlap_first_hit_radius": null,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": false,
+              "num_hits": 6,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": false,
+              "num_hits": 7,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": false,
+              "num_hits": 9,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 0.0021114265305154866,
+        "mean_abs": 5.428534698106922e-06,
+        "max_abs": 0.0009731042664498091
+      }
+    },
+    {
+      "step": 5,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 0,
+          "obj_in_finger_contact_objs": false,
+          "marker_pos": [
+            3.531797409057617,
+            4.79573917388916,
+            0.5166338682174683
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 1.8739698257991348
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2",
+              "dist": 1.7012365469991526
+            }
+          },
+          "overlap_primary_hit": false,
+          "overlap_first_hit_radius": null,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": false,
+              "num_hits": 6,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": false,
+              "num_hits": 7,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": false,
+              "num_hits": 9,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 0.01125381369117526,
+        "mean_abs": 2.2001360318385648e-05,
+        "max_abs": 0.00703144446015358
+      }
+    }
+  ]
+}

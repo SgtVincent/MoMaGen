@@ -1,0 +1,162 @@
+{
+    "name": "r1_turning_on_radio",
+    "type": "omnigibson_bimanual",
+    "experiment": {
+        "name": "demo_src_r1_turning_on_radio_task_D0",
+        "source": {
+            "dataset_path": "/home/ubuntu/repo/MoMaGen/momagen/datasets/processed_source_demos/r1_turning_on_radio_raw_episode_00000010.hdf5",
+            "filter_key": null,
+            "n": 1,
+            "start": null
+        },
+        "generation": {
+            "path": "/tmp/momagen_turning_on_radio_round60/A216_seed5_frac100_slowpress_seq_gpu0_nocvd",
+            "guarantee": false,
+            "keep_failed": true,
+            "num_trials": 1,
+            "select_src_per_subtask": false,
+            "transform_first_robot_pose": false,
+            "interpolate_from_last_target_pose": true
+        },
+        "task": {
+            "name": "r1_turning_on_radio_D0",
+            "robot": null,
+            "gripper": null,
+            "interface": null,
+            "interface_type": null
+        },
+        "max_num_failures": 1,
+        "render_video": false,
+        "num_demo_to_render": 1,
+        "num_fail_demo_to_render": 1,
+        "log_every_n_attempts": 1,
+        "seed": 5
+    },
+    "obs": {
+        "collect_obs": false,
+        "camera_names": [],
+        "camera_height": 84,
+        "camera_width": 84
+    },
+    "task": {
+        "task_spec": {
+            "phase_1": {
+                "type": "uncoordinated",
+                "arm_left": {
+                    "subtask_1": {
+                        "subtask_term_signal": null,
+                        "subtask_term_offset_range": null,
+                        "selection_strategy": "random",
+                        "selection_strategy_kwargs": null,
+                        "action_noise": 0.0,
+                        "num_fixed_steps": 0,
+                        "apply_noise_during_interpolation": false,
+                        "arm": "left",
+                        "object_ref": null,
+                        "attached_obj": null,
+                        "subtask_term_step": 1162,
+                        "MP_end_step": 1162,
+                        "retract_type": "no_retract",
+                        "num_interpolation_steps": 5
+                    }
+                },
+                "arm_right": {
+                    "subtask_1": {
+                        "subtask_term_signal": null,
+                        "subtask_term_offset_range": null,
+                        "selection_strategy": "random",
+                        "selection_strategy_kwargs": null,
+                        "action_noise": 0.0,
+                        "num_fixed_steps": 0,
+                        "apply_noise_during_interpolation": false,
+                        "arm": "right",
+                        "object_ref": "radio_89",
+                        "attached_obj": null,
+                        "subtask_term_step": 1162,
+                        "MP_end_step": 1094,
+                        "retract_type": "no_retract",
+                        "num_interpolation_steps": 5
+                    }
+                }
+            },
+            "phase_2": {
+                "type": "coordinated",
+                "arm_left": {
+                    "subtask_1": {
+                        "subtask_term_signal": null,
+                        "subtask_term_offset_range": null,
+                        "selection_strategy": "random",
+                        "selection_strategy_kwargs": null,
+                        "action_noise": 0.0,
+                        "num_fixed_steps": 0,
+                        "apply_noise_during_interpolation": false,
+                        "arm": "left",
+                        "object_ref": "radio_89",
+                        "attached_obj": null,
+                        "subtask_term_step": 1434,
+                        "MP_end_step": 1364,
+                        "retract_type": "no_retract",
+                        "num_interpolation_steps": 20
+                    }
+                },
+                "arm_right": {
+                    "subtask_1": {
+                        "subtask_term_signal": null,
+                        "subtask_term_offset_range": null,
+                        "selection_strategy": "random",
+                        "selection_strategy_kwargs": null,
+                        "action_noise": 0.0,
+                        "num_fixed_steps": 0,
+                        "apply_noise_during_interpolation": false,
+                        "arm": "right",
+                        "object_ref": null,
+                        "attached_obj": "radio_89",
+                        "subtask_term_step": 1434,
+                        "MP_end_step": 1364,
+                        "retract_type": "no_retract",
+                        "num_interpolation_steps": 20
+                    }
+                }
+            },
+            "phase_3": {
+                "type": "uncoordinated",
+                "arm_left": {
+                    "subtask_1": {
+                        "subtask_term_signal": null,
+                        "subtask_term_offset_range": null,
+                        "selection_strategy": "random",
+                        "selection_strategy_kwargs": null,
+                        "action_noise": 0.0,
+                        "num_fixed_steps": 0,
+                        "apply_noise_during_interpolation": false,
+                        "arm": "left",
+                        "object_ref": null,
+                        "attached_obj": null,
+                        "subtask_term_step": 1776,
+                        "MP_end_step": 1776,
+                        "retract_type": "no_retract",
+                        "num_interpolation_steps": 20
+                    }
+                },
+                "arm_right": {
+                    "subtask_1": {
+                        "subtask_term_signal": null,
+                        "subtask_term_offset_range": null,
+                        "selection_strategy": "random",
+                        "selection_strategy_kwargs": null,
+                        "action_noise": 0.0,
+                        "num_fixed_steps": 0,
+                        "apply_noise_during_interpolation": false,
+                        "arm": "right",
+                        "object_ref": "coffee_table_koagbh_0",
+                        "attached_obj": "radio_89",
+                        "subtask_term_step": 1776,
+                        "MP_end_step": 1600,
+                        "retract_type": "no_retract",
+                        "num_interpolation_steps": 20
+                    }
+                }
+            }
+        }
+    }
+}

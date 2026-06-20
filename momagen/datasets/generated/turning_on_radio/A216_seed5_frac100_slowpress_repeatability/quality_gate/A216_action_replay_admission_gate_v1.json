@@ -1,0 +1,110 @@
+{
+  "manifest_type": "momagen_action_replay_admission_gate_v1",
+  "created_at": "2026-06-21T05:25:02+08:00",
+  "candidate": "A216",
+  "dataset": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/demo_src_r1_turning_on_radio_task_D0/demo.hdf5",
+  "inputs": {
+    "smoke": {
+      "output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_smoke_0_5.json",
+      "summary": {
+        "num_records": 6,
+        "first_task_success_step": 0,
+        "first_toggle_value_step": null,
+        "first_can_toggle_step": null,
+        "first_primary_overlap_step": null,
+        "max_robot_can_toggle_steps": 0,
+        "best_left_finger_dist": {
+          "step": 5,
+          "object": "radio_89",
+          "dist": 1.8739698257991348,
+          "link": "robot_r1:left_gripper_finger_link2"
+        },
+        "state_error": {
+          "max_abs_max": 0.00703144446015358,
+          "mean_abs_max": 2.2001360318385648e-05,
+          "l2_max": 0.01125381369117526,
+          "shape_mismatch_steps": []
+        }
+      }
+    },
+    "long_window": {
+      "output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805_video_diag.json",
+      "video_output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805.mp4",
+      "summary": {
+        "num_records": 46,
+        "first_task_success_step": 760,
+        "first_toggle_value_step": 805,
+        "first_can_toggle_step": 780,
+        "first_primary_overlap_step": 780,
+        "max_robot_can_toggle_steps": 5,
+        "best_left_finger_dist": {
+          "step": 805,
+          "object": "radio_89",
+          "dist": 0.02203195136511964,
+          "link": "robot_r1:left_gripper_finger_link1"
+        },
+        "state_error": {
+          "max_abs_max": 1.0418761372566223,
+          "mean_abs_max": 0.0032474199269272295,
+          "l2_max": 1.5815588230778745,
+          "shape_mismatch_steps": []
+        }
+      }
+    },
+    "near_checkpoint": {
+      "output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_780_805_checkpoint_diag.json",
+      "summary": {
+        "num_records": 26,
+        "first_task_success_step": 780,
+        "first_toggle_value_step": 805,
+        "first_can_toggle_step": 780,
+        "first_primary_overlap_step": 784,
+        "max_robot_can_toggle_steps": 5,
+        "best_left_finger_dist": {
+          "step": 805,
+          "object": "radio_89",
+          "dist": 0.021449888619154485,
+          "link": "robot_r1:left_gripper_finger_link1"
+        },
+        "state_error": {
+          "max_abs_max": 1.2413770854473114,
+          "mean_abs_max": 0.0026514514661560616,
+          "l2_max": 1.711101068623289,
+          "shape_mismatch_steps": []
+        }
+      }
+    }
+  },
+  "gate_policy": {
+    "short_smoke_state_error_max_abs_threshold": 0.01,
+    "requires_long_window_5_step_hold": true,
+    "near_checkpoint_success_is_insufficient_without_long_window_success": true,
+    "semantic_video_review_required_before_training_admission": true
+  },
+  "derived": {
+    "short_smoke_state_error_max_abs": 0.00703144446015358,
+    "long_window_class": "pass",
+    "near_checkpoint_class": "pass",
+    "checkpoint_sensitive": false,
+    "video": {
+      "path": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805.mp4",
+      "frames": 46,
+      "fps": 12,
+      "duration_seconds": 3.833333,
+      "resolution": "1280x720"
+    }
+  },
+  "quality_verdict": {
+    "passes": [
+      "short_smoke_state_consistent",
+      "long_precontact_window_reproduces_5_step_hold",
+      "near_contact_checkpoint_reproduces_5_step_hold"
+    ],
+    "warnings": [
+      "initial_snapshot_task_success_likely_predicate_cache_artifact",
+      "standard_generation_stats_report_partial_demo_true_and_requires_replay_plus_semantic_review_before_training_admission"
+    ],
+    "blockers": [],
+    "admission_recommendation": "admit_candidate_after_human_review"
+  }
+}
