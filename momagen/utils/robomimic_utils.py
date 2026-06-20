@@ -4,6 +4,8 @@ Collection of utilities related to robomimic.
 import json
 import traceback
 import argparse
+import importlib.util
+import os
 from copy import deepcopy
 
 import robomimic
@@ -74,6 +76,66 @@ def create_env(
         camera_names = []
 
     # create environment
+    env_type = EnvUtils.get_env_type(env_meta=env_meta)
+    if env_type == 4:
+        # The current behavior env ships an older robomimic whose
+        # create_env_for_data_processing signature cannot accept custom env
+        # classes / OG-specific kwargs, and whose env registry does not know
+        # EnvType.OG_TYPE. Load MoMaGen's local EnvOmniGibson wrapper directly.
+        import robomimic.envs.env_base as EB
+        if not hasattr(EB.EnvType, "OG_TYPE"):
+            EB.EnvType.OG_TYPE = 4
+
+        env_file = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "..", "..", "robomimic", "robomimic", "envs", "env_omnigibson.py"
+        ))
+        spec = importlib.util.spec_from_file_location("momagen_local_env_omnigibson", env_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        og_env_class = env_class or module.EnvOmniGibson
+
+        env_kwargs = deepcopy(env_meta["env_kwargs"])
+        env_kwargs.pop("env_name", None)
+        env_kwargs.pop("camera_names", None)
+        env_kwargs.pop("camera_height", None)
+        env_kwargs.pop("camera_width", None)
+        env_kwargs.pop("reward_shaping", None)
+        env_kwargs["init_curobo"] = init_curobo
+        # MoMaGen encodes robot + dataset difficulty in task names (e.g.
+        # r1_picking_up_trash_D0), while OmniGibson's BDDL activity registry
+        # only knows the activity name (picking_up_trash). Keep the suffixed
+        # env_name for the local wrapper so D0 / D1 / D2 randomization branches
+        # still work, but force the underlying OG task lookup to use the BDDL
+        # activity name.
+        requested_env_name = env_meta["env_name"]
+        base_env_name = requested_env_name
+        suffix = base_env_name.rsplit("_", 1)[-1]
+        if suffix.startswith("D") and suffix[1:].isdigit():
+            base_env_name = base_env_name.rsplit("_", 1)[0]
+        activity_name = base_env_name
+        prefix, sep, remainder = activity_name.partition("_")
+        if sep and prefix.startswith("r") and prefix[1:].isdigit():
+            activity_name = remainder
+        for variant_suffix in ("_mimicgen", "_skillgen"):
+            if activity_name.endswith(variant_suffix):
+                activity_name = activity_name[: -len(variant_suffix)]
+                break
+        env_kwargs.setdefault("task", {})["activity_name"] = activity_name
+        # Raw / reconstructed BEHAVIOR scene metadata can omit task-level
+        # presampled robot poses. In that case current OmniGibson's default
+        # BehaviorTask reset path crashes on `robot.model_name in None`; the
+        # source HDF5 already contains the desired robot pose in the config, so
+        # disable presampled-pose lookup for MoMaGen generation env creation.
+        env_kwargs.setdefault("task", {})["use_presampled_robot_pose"] = False
+        return og_env_class.create_for_data_processing(
+            env_name=env_meta["env_name"],
+            policy_rollout=policy_rollout,
+            manipulation_only=manipulation_only,
+            real_robot_mode=real_robot_mode,
+            baseline=baseline,
+            **env_kwargs,
+        )
+
     env = EnvUtils.create_env_for_data_processing(
         env_meta=env_meta,
         env_class=env_class,
@@ -146,4 +208,14 @@ def get_default_env_cameras(env_meta):
     Returns:
         camera_names (list of str): list of camera names that correspond to image observations
     """
-    return DEFAULT_CAMERAS[EnvUtils.get_env_type(env_meta=env_meta)]
+    env_type = EnvUtils.get_env_type(env_meta=env_meta)
+    if env_type in DEFAULT_CAMERAS:
+        return DEFAULT_CAMERAS[env_type]
+    # Local MoMaGen registers OmniGibson as robomimic EnvType.OG_TYPE (4), but
+    # robomimic's playback DEFAULT_CAMERAS table does not include that key. The
+    # OmniGibson wrapper currently ignores camera_name for rgb_array rendering
+    # and returns a concatenated ego + viewer frame, so a single stable placeholder
+    # is sufficient when a caller asks for default debug-video cameras.
+    if env_type == 4:
+        return ["agentview"]
+    return DEFAULT_CAMERAS[env_type]

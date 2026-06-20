@@ -22,6 +22,9 @@ import robomimic.utils.tensor_utils as TensorUtils
 from momagen.datagen.datagen_info import DatagenInfo
 
 
+R1PRO_GRIPPER_ACTION_INDICES = (14, 22)
+
+
 def write_json(json_dic, json_path):
     """
     Write dictionary to json file.
@@ -68,6 +71,214 @@ def get_all_demos_from_dataset(
     return demo_keys
 
 
+def _decode_hdf5_attr(value):
+    """Decode string-like HDF5 attrs across h5py / numpy variants."""
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    if hasattr(value, "item"):
+        try:
+            return _decode_hdf5_attr(value.item())
+        except Exception:
+            pass
+    return value
+
+
+def _loads_json_attr(attrs, key):
+    if key not in attrs:
+        return None
+    value = _decode_hdf5_attr(attrs[key])
+    if value in (None, ""):
+        return None
+    return json.loads(value)
+
+
+def _quat_xyzw_to_mat(quat):
+    """Convert an xyzw quaternion to a 3x3 rotation matrix without importing OG."""
+    x, y, z, w = np.asarray(quat, dtype=np.float64)
+    norm = np.linalg.norm([x, y, z, w])
+    if norm == 0:
+        return np.eye(3, dtype=np.float32)
+    x, y, z, w = x / norm, y / norm, z / norm, w / norm
+    return np.array(
+        [
+            [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+            [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+        ],
+        dtype=np.float32,
+    )
+
+
+def _pose_from_pos_ori(pos=None, ori=None):
+    pose = np.eye(4, dtype=np.float32)
+    if ori is not None:
+        pose[:3, :3] = _quat_xyzw_to_mat(ori)
+    if pos is not None:
+        pose[:3, 3] = np.asarray(pos, dtype=np.float32)
+    return pose
+
+
+def _repeat_pose(pose, horizon):
+    return np.repeat(np.asarray(pose, dtype=np.float32)[None], int(horizon), axis=0)
+
+
+def _get_episode_action_dataset(ep_grp):
+    if "actions" in ep_grp:
+        return ep_grp["actions"]
+    if "action" in ep_grp:
+        return ep_grp["action"]
+    raise KeyError("episode group must contain either 'actions' or 'action'")
+
+
+def _collect_task_object_names(task_spec):
+    """Collect object names referenced by a MoMaGen task spec, handling nested bimanual specs."""
+    object_names = set()
+
+    def visit(node):
+        if isinstance(node, dict):
+            for key in ("object_ref", "attached_obj"):
+                value = node.get(key)
+                if value not in (None, "robot_r1", "torso_link4"):
+                    object_names.add(value)
+            for value in node.values():
+                visit(value)
+        elif isinstance(node, (list, tuple)):
+            for value in node:
+                visit(value)
+
+    if task_spec is not None:
+        visit(getattr(task_spec, "spec", task_spec))
+    return object_names
+
+
+def _get_scene_object_pose_templates(hdf5_file):
+    """Read static object poses from BEHAVIOR-1K raw scene_file metadata."""
+    scene_file = _loads_json_attr(hdf5_file["data"].attrs, "scene_file")
+    if scene_file is None:
+        return {}
+
+    object_registry = scene_file.get("state", {}).get("registry", {}).get("object_registry", {})
+    object_poses = {}
+    for object_name, object_state in object_registry.items():
+        root_link = object_state.get("root_link", {})
+        if "pos" in root_link or "ori" in root_link:
+            object_poses[object_name] = _pose_from_pos_ori(root_link.get("pos"), root_link.get("ori"))
+    return object_poses
+
+
+def _infer_env_interface_info_from_behavior_metadata(hdf5_file):
+    """Infer MoMaGen env interface attrs for minimally-compatible BEHAVIOR-1K HDF5 files."""
+    config = _loads_json_attr(hdf5_file["data"].attrs, "config") or {}
+    task_cfg = config.get("task", {})
+    activity_name = task_cfg.get("activity_name")
+    robot_type = ""
+    robots = config.get("robots", [])
+    if robots:
+        robot_type = str(robots[0].get("type", "")).lower()
+
+    known_bimanual_interfaces = {
+        "picking_up_trash": "MG_R1PickingUpTrash",
+        "pick_cup": "MG_R1PickCup",
+        "tidy_table": "MG_R1TidyTable",
+        "dishes_away": "MG_R1DishesAway",
+        "clean_pan": "MG_R1CleanPan",
+        "bringing_water": "MG_R1BringingWater",
+    }
+    interface_name = known_bimanual_interfaces.get(activity_name)
+    if interface_name is None and robot_type.startswith("r1") and activity_name:
+        words = [part for part in activity_name.split("_") if part]
+        interface_name = "MG_R1" + "".join(word.capitalize() for word in words)
+    return interface_name, "omnigibson_bimanual"
+
+
+def _extract_gripper_action_from_behavior_actions(actions):
+    actions = np.asarray(actions)
+    if actions.ndim != 2 or actions.shape[0] == 0:
+        return np.zeros((0, 2), dtype=np.float32)
+    if actions.shape[1] > max(R1PRO_GRIPPER_ACTION_INDICES):
+        return actions[:, R1PRO_GRIPPER_ACTION_INDICES].astype(np.float32)
+    if actions.shape[1] >= 2:
+        return actions[:, -2:].astype(np.float32)
+    return np.zeros((actions.shape[0], 2), dtype=np.float32)
+
+
+def _extract_datagen_info_from_episode(ep_grp, horizon, task_object_names=None, scene_object_pose_templates=None):
+    """Build DatagenInfo from MoMaGen datagen_info or minimally adapt BEHAVIOR-1K raw HDF5.
+
+    The minimal BEHAVIOR-1K compatibility path is intentionally loader-only: it
+    avoids simulator replay and fills the fields DataGenerator needs to split
+    source segments and build object-frame targets. If EEF poses are unavailable,
+    identity placeholders are used so DataGenerator construction / smoke tests can
+    run fail-closed instead of crashing on missing sample source demos.
+    """
+    task_object_names = set(task_object_names or [])
+    scene_object_pose_templates = scene_object_pose_templates or {}
+    ep_datagen_info = ep_grp["datagen_info"] if "datagen_info" in ep_grp else None
+
+    if ep_datagen_info is not None and "eef_pose" in ep_datagen_info:
+        eef_pose = ep_datagen_info["eef_pose"][:]
+    else:
+        bimanual_identity_eef_pose = np.concatenate(
+            [np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32)],
+            axis=0,
+        )
+        eef_pose = np.repeat(bimanual_identity_eef_pose[None], int(horizon), axis=0)
+        print(
+            "WARNING: BEHAVIOR-1K source demo has no datagen_info/eef_pose; "
+            "using identity EEF pose placeholders for loader-only compatibility."
+        )
+
+    object_poses = {}
+    if ep_datagen_info is not None and "object_poses" in ep_datagen_info:
+        object_poses = {k: ep_datagen_info["object_poses"][k][:] for k in ep_datagen_info["object_poses"]}
+
+    for object_name in sorted(task_object_names):
+        if object_name in object_poses:
+            continue
+        template_pose = scene_object_pose_templates.get(object_name)
+        if template_pose is None:
+            template_pose = np.eye(4, dtype=np.float32)
+            print(
+                "WARNING: Could not find BEHAVIOR-1K scene pose for object {}; "
+                "using identity pose placeholder.".format(object_name)
+            )
+        object_poses[object_name] = _repeat_pose(template_pose, horizon)
+
+    subtask_term_signals = None
+    if ep_datagen_info is not None and "subtask_term_signals" in ep_datagen_info:
+        subtask_term_signals = {
+            k: ep_datagen_info["subtask_term_signals"][k][:]
+            for k in ep_datagen_info["subtask_term_signals"]
+        }
+
+    if ep_datagen_info is not None and "target_pose" in ep_datagen_info:
+        target_pose = ep_datagen_info["target_pose"][:]
+    else:
+        target_pose = eef_pose
+
+    if ep_datagen_info is not None and "gripper_action" in ep_datagen_info:
+        gripper_action = ep_datagen_info["gripper_action"][:]
+    else:
+        gripper_action = _extract_gripper_action_from_behavior_actions(_get_episode_action_dataset(ep_grp)[:])
+
+    base_pose = None
+    if ep_datagen_info is not None and "base_pose" in ep_datagen_info:
+        base_pose = ep_datagen_info["base_pose"][:]
+
+    return DatagenInfo(
+        base_pose=base_pose,
+        eef_pose=eef_pose,
+        object_poses=object_poses,
+        subtask_term_signals=subtask_term_signals,
+        target_pose=target_pose,
+        gripper_action=gripper_action,
+    )
+
+
+def _get_demo_horizon(ep_grp):
+    return int(_get_episode_action_dataset(ep_grp).shape[0])
+
+
 def get_env_interface_info_from_dataset(
     dataset_path,
     demo_keys,
@@ -88,9 +299,24 @@ def get_env_interface_info_from_dataset(
     env_interface_types = []
     for ep in demo_keys:
         datagen_info_key = "data/{}/datagen_info".format(ep)
-        assert datagen_info_key in f, "Could not find MimicGen metadata in dataset {}. Ensure you have run prepare_src_dataset.py on this hdf5".format(dataset_path)
-        env_interface_names.append(f[datagen_info_key].attrs["env_interface_name"])
-        env_interface_types.append(f[datagen_info_key].attrs["env_interface_type"])
+        if datagen_info_key in f and "env_interface_name" in f[datagen_info_key].attrs and "env_interface_type" in f[datagen_info_key].attrs:
+            env_interface_names.append(f[datagen_info_key].attrs["env_interface_name"])
+            env_interface_types.append(f[datagen_info_key].attrs["env_interface_type"])
+            continue
+
+        inferred_name, inferred_type = _infer_env_interface_info_from_behavior_metadata(f)
+        assert inferred_name is not None, (
+            "Could not find MimicGen metadata in dataset {} and could not infer a MoMaGen interface "
+            "from BEHAVIOR-1K metadata. Ensure you have run prepare_src_dataset.py or provide "
+            "data.attrs['config'] with task.activity_name."
+        ).format(dataset_path)
+        print(
+            "WARNING: {} missing datagen_info interface attrs; inferred {} / {} from BEHAVIOR-1K metadata".format(
+                dataset_path, inferred_name, inferred_type
+            )
+        )
+        env_interface_names.append(inferred_name)
+        env_interface_types.append(inferred_type)
     f.close()
 
     # ensure all source demos are consistent
@@ -156,6 +382,8 @@ def parse_source_dataset(
     subtask_term_offset_ranges[-1] = (0, 0)
 
     f = h5py.File(dataset_path, "r")
+    task_object_names = _collect_task_object_names(task_spec)
+    scene_object_pose_templates = _get_scene_object_pose_templates(f)
 
     datagen_infos = []
     subtask_indices = []
@@ -164,13 +392,11 @@ def parse_source_dataset(
         ep_grp = f["data/{}".format(ep)]
 
         # extract datagen info
-        ep_datagen_info = ep_grp["datagen_info"]
-        ep_datagen_info_obj = DatagenInfo(
-            eef_pose=ep_datagen_info["eef_pose"][:],
-            object_poses={ k : ep_datagen_info["object_poses"][k][:] for k in ep_datagen_info["object_poses"] },
-            subtask_term_signals={ k : ep_datagen_info["subtask_term_signals"][k][:] for k in ep_datagen_info["subtask_term_signals"] },
-            target_pose=ep_datagen_info["target_pose"][:],
-            gripper_action=ep_datagen_info["gripper_action"][:],
+        ep_datagen_info_obj = _extract_datagen_info_from_episode(
+            ep_grp=ep_grp,
+            horizon=_get_demo_horizon(ep_grp),
+            task_object_names=task_object_names,
+            scene_object_pose_templates=scene_object_pose_templates,
         )
         datagen_infos.append(ep_datagen_info_obj)
 
@@ -182,7 +408,7 @@ def parse_source_dataset(
             if subtask_term_signal is None:
                 # final subtask, finishes at end of demo
                 # OG uses "action" rather than "actions"
-                action = ep_grp["actions"] if "actions" in ep_grp else ep_grp["action"]
+                action = _get_episode_action_dataset(ep_grp)
                 subtask_term_ind = action.shape[0]
             else:
                 # trick to detect index where first 0 -> 1 transition occurs - this will be the end of the subtask
@@ -259,6 +485,8 @@ def parse_source_dataset_bimanual(
     # get saved data information
 
     f = h5py.File(dataset_path, "r")
+    task_object_names = _collect_task_object_names(task_spec)
+    scene_object_pose_templates = _get_scene_object_pose_templates(f)
 
     datagen_infos = []
     subtask_indices = []
@@ -270,18 +498,15 @@ def parse_source_dataset_bimanual(
 
         # extract datagen info
         # Only record eef_pose that are actually achieved, not the target_pose
-        ep_datagen_info = ep_grp["datagen_info"]
-        ep_datagen_info_obj = DatagenInfo(
-            eef_pose=ep_datagen_info["eef_pose"][:],
-            object_poses={ k : ep_datagen_info["object_poses"][k][:] for k in ep_datagen_info["object_poses"] },
-            subtask_term_signals=None if "subtask_term_signals" not in ep_datagen_info else { k : ep_datagen_info["subtask_term_signals"][k][:] for k in ep_datagen_info["subtask_term_signals"] },
-            # subtask_term_signals={ k : ep_datagen_info["subtask_term_signals"][k][:] for k in ep_datagen_info["subtask_term_signals"] },
-            # target_pose=ep_datagen_info["target_pose"][:],
-            gripper_action=ep_datagen_info["gripper_action"][:],
+        ep_datagen_info_obj = _extract_datagen_info_from_episode(
+            ep_grp=ep_grp,
+            horizon=_get_demo_horizon(ep_grp),
+            task_object_names=task_object_names,
+            scene_object_pose_templates=scene_object_pose_templates,
         )
         datagen_infos.append(ep_datagen_info_obj)
         # OG uses "action" rather than "actions"
-        action = ep_grp["actions"] if "actions" in ep_grp else ep_grp["action"]
+        action = _get_episode_action_dataset(ep_grp)
         actions.append(np.array(action))
         num_steps = action.shape[0]
         demo_lens.append(num_steps)
@@ -634,6 +859,7 @@ def config_generator_to_script_lines(generator, config_dir):
             base_config_file,
             new_base_config_file,
         )
+        _ensure_robomimic_config_logging_section(new_base_config_file)
         gen.base_config_file = new_base_config_file
 
         # we'll write script file to a temp dir and parse it from there to get the training commands
@@ -662,3 +888,15 @@ def config_generator_to_script_lines(generator, config_dir):
         config_file_dict[config_file_name] = 1
 
     return config_files, all_run_lines
+
+
+def _ensure_robomimic_config_logging_section(config_path):
+    """Backfill robomimic's expected experiment.logging section for older MoMaGen configs."""
+
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    experiment = config.setdefault("experiment", {})
+    if "logging" in experiment:
+        return
+    experiment["logging"] = {}
+    write_json(config, config_path)

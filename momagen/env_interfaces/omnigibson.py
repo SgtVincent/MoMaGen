@@ -2,9 +2,11 @@
 MoMaGen environment interface classes for OmniGibson environments.
 Refactored to use configuration-driven tasks instead of hardcoded classes.
 """
+import json
+import os
 import numpy as np
 from typing import Dict, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import cvxpy as cp
 import torch as th
 
@@ -263,6 +265,14 @@ class OmniGibsonInterfaceBimanual(OmniGibsonInterface):
         super(OmniGibsonInterfaceBimanual, self).__init__(env, task_config)
         self._setup_arm_controller()
         self.gripper_action_dim = th.cat([self.robot.controller_action_idx["gripper_left"], self.robot.controller_action_idx["gripper_right"]])
+        if os.environ.get("MOMAGEN_DEBUG_GRIPPER") == "1":
+            print(
+                "[MOMAGEN_DEBUG_GRIPPER] "
+                f"robot_action_dim={self.robot.action_dim} "
+                f"controller_order={getattr(self.robot, 'controller_order', None)} "
+                f"controller_action_idx={self.robot.controller_action_idx} "
+                f"gripper_action_dim={self.gripper_action_dim.tolist()}"
+            )
 
     def _setup_arm_controller(self):
         """
@@ -366,6 +376,16 @@ class OmniGibsonInterfaceBimanual(OmniGibsonInterface):
         
         control_dict = self.robot.get_control_dict()
 
+        trunk_controller = self.robot.controllers.get("trunk")
+        include_trunk_arms_raw = os.environ.get("MOMAGEN_IK_INCLUDE_TRUNK_ARMS", "")
+        include_trunk_arms = {
+            item.strip().lower()
+            for item in include_trunk_arms_raw.split(",")
+            if item.strip()
+        }
+        include_trunk_for_all = os.environ.get("MOMAGEN_IK_INCLUDE_TRUNK", "0") == "1"
+        trunk_action_written = False
+
         for arm_name in ["left", "right"]:
             target_pose = target_pose_dict[arm_name]
 
@@ -388,11 +408,22 @@ class OmniGibsonInterfaceBimanual(OmniGibsonInterface):
             arm_dof_idx = arm_controller.dof_idx
             manipulation_dof_idx = arm_dof_idx
 
-            # Assume the trunk is excluded
-            # if arm_name == "left":
-            #     trunk_controller = self.robot.controllers["trunk"]
-            #     trunk_controller_dof_idx = trunk_controller.dof_idx
-            #     manipulation_dof_idx = th.cat([arm_dof_idx, trunk_controller_dof_idx])
+            include_trunk = (
+                trunk_controller is not None
+                and (
+                    include_trunk_for_all
+                    or arm_name in include_trunk_arms
+                    or "both" in include_trunk_arms
+                    or "all" in include_trunk_arms
+                )
+            )
+            trunk_dof_idx = None
+            if include_trunk:
+                trunk_dof_idx = trunk_controller.dof_idx
+                manipulation_dof_idx = np.concatenate([
+                    np.asarray(arm_dof_idx, dtype=int),
+                    np.asarray(trunk_dof_idx, dtype=int),
+                ])
 
             j_eef = control_dict[f"eef_{arm_name}_jacobian_relative"][:, manipulation_dof_idx]
             q = control_dict["joint_position"][manipulation_dof_idx]
@@ -409,14 +440,14 @@ class OmniGibsonInterfaceBimanual(OmniGibsonInterface):
             q_dot_upper_limit = arm_controller._control_limits[ControlType.get_type("velocity")][1][manipulation_dof_idx]
 
             vel_err = err.numpy() / og.sim.get_physics_dt()
-            proportional_gain = 0.5
+            proportional_gain = float(os.environ.get("MOMAGEN_IK_PROPORTIONAL_GAIN", "0.5") or 0.5)
 
             n = j_eef.shape[1]
             epsilon = 1e-6
             P = j_eef.T @ j_eef + epsilon * np.eye(j_eef.shape[1])
             r = -proportional_gain * vel_err @ j_eef
 
-            velocity_gain = 0.5
+            velocity_gain = float(os.environ.get("MOMAGEN_IK_VELOCITY_GAIN", "0.5") or 0.5)
             q_dot_upper_limit_by_joint_limit = velocity_gain * (q_upper_limit - q) / og.sim.get_physics_dt()
             q_dot_lower_limit_by_joint_limit = velocity_gain * (q_lower_limit - q) / og.sim.get_physics_dt()
 
@@ -428,11 +459,16 @@ class OmniGibsonInterfaceBimanual(OmniGibsonInterface):
 
             q_dot = cp.Variable(n)
             prob = cp.Problem(cp.Minimize(0.5 * cp.quad_form(q_dot, P) + r.T @ q_dot), [G @ q_dot <= h])
+            prob_status = None
+            q_dot_val = None
+            unclipped_target_joint_pos = None
             try:
                 prob.solve()
             except cp.error.SolverError:
                 target_joint_pos = q
+                prob_status = "solver_error"
             else:
+                prob_status = prob.status
                 if prob.status == "optimal":
                     q_dot_val = q_dot.value
                     delta_j = q_dot_val * og.sim.get_physics_dt()
@@ -443,21 +479,84 @@ class OmniGibsonInterfaceBimanual(OmniGibsonInterface):
             # NOTE: This clipping is important because the convex optimization (cvxpy) solver does not guarantee that the solution will be STRICTLY within the limits
             # The result is that sometimes the joint positions obtained from the solver are just slightly (even in the order of 1e-5) out of the limits
             # So, making the limits of target_joint_pos (in radians) a bit more stricter will help avoid this issue
-            target_joint_pos = np.clip(target_joint_pos, q_lower_limit + 0.02, q_upper_limit - 0.02)
+            unclipped_target_joint_pos = target_joint_pos
+            joint_limit_margin = float(os.environ.get("MOMAGEN_IK_JOINT_LIMIT_MARGIN", "0.02") or 0.02)
+            target_joint_pos = np.clip(target_joint_pos, q_lower_limit + joint_limit_margin, q_upper_limit - joint_limit_margin)
 
             arm_command = target_joint_pos
-            if arm_name == "left":
-                # arm_command, trunk_command = arm_command[:arm_dof_idx.shape[0]], arm_command[arm_dof_idx.shape[0]:]
-                arm_action = arm_controller._reverse_preprocess_command(arm_command)
-                # trunk_command = trunk_controller._reverse_preprocess_command(trunk_command)
-                action[self.robot.controller_action_idx[f"arm_{arm_name}"]] = arm_action
-                # action[self.robot.controller_action_idx["trunk"]] = trunk_command
-            else:
-                arm_action = arm_controller._reverse_preprocess_command(arm_command)
-                action[self.robot.controller_action_idx[f"arm_{arm_name}"]] = arm_action
+            trunk_action = None
+            if include_trunk:
+                arm_dof_count = int(arm_dof_idx.shape[0])
+                arm_command = target_joint_pos[:arm_dof_count]
+                trunk_command = target_joint_pos[arm_dof_count:]
+                trunk_action = trunk_controller._reverse_preprocess_command(trunk_command)
+                action[self.robot.controller_action_idx["trunk"]] = trunk_action
+                trunk_action_written = True
+
+            arm_action = arm_controller._reverse_preprocess_command(arm_command)
+            action[self.robot.controller_action_idx[f"arm_{arm_name}"]] = arm_action
+
+            debug_ik_action = os.environ.get("MOMAGEN_DEBUG_IK_ACTION") == "1"
+            if debug_ik_action:
+                debug_ik_every = int(os.environ.get("MOMAGEN_DEBUG_IK_ACTION_EVERY", "1") or 1)
+                self._momagen_debug_ik_action_counter = getattr(self, "_momagen_debug_ik_action_counter", 0) + 1
+
+                def _as_np(x):
+                    if x is None:
+                        return None
+                    if hasattr(x, "detach"):
+                        x = x.detach()
+                    if hasattr(x, "cpu"):
+                        x = x.cpu()
+                    return np.asarray(x, dtype=float)
+
+                q_np = _as_np(q)
+                target_np = _as_np(target_joint_pos)
+                unclipped_np = _as_np(unclipped_target_joint_pos)
+                q_dot_np = _as_np(q_dot_val)
+                arm_action_np = _as_np(arm_action)
+                trunk_action_np = _as_np(trunk_action)
+                q_lower_np = _as_np(q_lower_limit)
+                q_upper_np = _as_np(q_upper_limit)
+                clip_delta_norm = None
+                clipped_joint_count = None
+                joint_margin_min = None
+                if target_np is not None and unclipped_np is not None:
+                    clip_delta = target_np - unclipped_np
+                    clip_delta_norm = float(np.linalg.norm(clip_delta))
+                    clipped_joint_count = int(np.sum(np.abs(clip_delta) > 1e-6))
+                if target_np is not None and q_lower_np is not None and q_upper_np is not None:
+                    joint_margin_min = float(np.min(np.minimum(target_np - q_lower_np, q_upper_np - target_np)))
+                target_joint_delta_norm = (
+                    float(np.linalg.norm(target_np - q_np))
+                    if target_np is not None and q_np is not None
+                    else None
+                )
+                should_print_ik_debug = (
+                    debug_ik_every <= 1
+                    or self._momagen_debug_ik_action_counter % debug_ik_every == 0
+                    or prob_status not in {"optimal", "optimal_inaccurate"}
+                    or (clipped_joint_count is not None and clipped_joint_count > 0)
+                )
+                if should_print_ik_debug:
+                    print(
+                        "[MOMAGEN_DEBUG_IK_ACTION] "
+                        f"arm={arm_name} dpos_norm={float(th.linalg.norm(dpos)):.6f} "
+                        f"dori_norm={float(th.linalg.norm(dori)):.6f} include_trunk={include_trunk} "
+                        f"status={prob_status} "
+                        f"qdot_norm={float(np.linalg.norm(q_dot_np)) if q_dot_np is not None else None} "
+                        f"target_joint_delta_norm={target_joint_delta_norm} "
+                        f"action_norm={float(np.linalg.norm(arm_action_np)) if arm_action_np is not None else None} "
+                        f"trunk_action_norm={float(np.linalg.norm(trunk_action_np)) if trunk_action_np is not None else None} "
+                        f"clip_delta_norm={clip_delta_norm} clipped_joint_count={clipped_joint_count} "
+                        f"joint_margin_min={joint_margin_min}",
+                        flush=True,
+                    )
 
         # fill in the no operation actions for the base, camera and trunk
         for name, controller in self.robot.controllers.items():
+            if name == "trunk" and trunk_action_written:
+                continue
             if name == 'base' or name == 'camera' or name == "trunk":
                 partial_action = controller.compute_no_op_action(control_dict)
                 action_idx = self.robot.controller_action_idx[name]
@@ -669,8 +768,18 @@ TASK_CONFIGS = {
     "r1_picking_up_trash": TaskConfig(
         name="r1_picking_up_trash",
         tracked_objects={
+            "can_of_soda_114": "can_of_soda_114",
+            "trash_can_116": "trash_can_116",
             "can_of_soda_261": "can_of_soda_261",
             "trash_can_262": "trash_can_262",
+        },
+    ),
+
+    "r1_turning_on_radio": TaskConfig(
+        name="r1_turning_on_radio",
+        tracked_objects={
+            "radio_89": "radio_89",
+            "coffee_table_koagbh_0": "coffee_table_koagbh_0",
         },
     ),
 
@@ -683,38 +792,65 @@ TASK_CONFIGS = {
    
 }
 
+
+def _get_task_config(task_name):
+    """Return task config, optionally applying local experiment overrides.
+
+    Set ``MOMAGEN_TASK_CONFIG_OVERRIDES`` to a JSON object like:
+    ``{"r1_picking_up_trash": {"tracked_objects": {"can": "can_1"}}}``.
+    This keeps local BEHAVIOR source-demo object ids out of the checked-in base
+    configs while making one-off source-demo conversion possible.
+    """
+    task_config = TASK_CONFIGS[task_name]
+    overrides_json = os.environ.get("MOMAGEN_TASK_CONFIG_OVERRIDES")
+    if not overrides_json:
+        return task_config
+
+    overrides = json.loads(overrides_json)
+    task_overrides = overrides.get(task_name, {})
+    if not task_overrides:
+        return task_config
+
+    return replace(
+        task_config,
+        tracked_objects=task_overrides.get("tracked_objects", task_config.tracked_objects),
+        termination_signals=task_overrides.get("termination_signals", task_config.termination_signals),
+        robot_specific_objects=task_overrides.get("robot_specific_objects", task_config.robot_specific_objects),
+        bimanual=task_overrides.get("bimanual", task_config.bimanual),
+    )
+
 # Backward compatibility - create legacy classes that use the new system
 class MG_TestTiagoCup(OmniGibsonInterfaceBimanual):
     def __init__(self, env):
-        super().__init__(env, TASK_CONFIGS["test_tiago_cup"])
+        super().__init__(env, _get_task_config("test_tiago_cup"))
 
 class MG_TestR1Cup(OmniGibsonInterfaceBimanual):
     def __init__(self, env):
-        super().__init__(env, TASK_CONFIGS["test_r1_cup"])
+        super().__init__(env, _get_task_config("test_r1_cup"))
 
 class MG_R1PutAwayCup(OmniGibsonInterfaceBimanual):
     def __init__(self, env):
-        super().__init__(env, TASK_CONFIGS["r1_put_away_cup"])
+        super().__init__(env, _get_task_config("r1_put_away_cup"))
 
 class MG_R1TidyTable(OmniGibsonInterfaceBimanual):
     def __init__(self, env):
-        super().__init__(env, TASK_CONFIGS["r1_tidy_table"])
+        super().__init__(env, _get_task_config("r1_tidy_table"))
 
 class MG_R1PickCup(OmniGibsonInterfaceBimanual):
     def __init__(self, env):
-        super().__init__(env, TASK_CONFIGS["r1_pick_cup"])
+        super().__init__(env, _get_task_config("r1_pick_cup"))
 
 class MG_R1DishesAway(OmniGibsonInterfaceBimanual):
     def __init__(self, env):
-        super().__init__(env, TASK_CONFIGS["r1_dishes_away"])
+        super().__init__(env, _get_task_config("r1_dishes_away"))
 
 class MG_R1CleanPan(OmniGibsonInterfaceBimanual):
     def __init__(self, env):
-        super().__init__(env, TASK_CONFIGS["r1_clean_pan"])
+        super().__init__(env, _get_task_config("r1_clean_pan"))
 
 class MG_R1BringingWater(OmniGibsonInterfaceBimanual):
     def __init__(self, env):
-        super().__init__(env, TASK_CONFIGS["r1_bringing_water"])
+        super().__init__(env, _get_task_config("r1_bringing_water"))
 
 # ---------------------------------
 # Add new class here for new tasks
@@ -722,7 +858,8 @@ class MG_R1BringingWater(OmniGibsonInterfaceBimanual):
 
 class MG_R1PickingUpTrash(OmniGibsonInterfaceBimanual):
     def __init__(self, env):
-        super().__init__(env, TASK_CONFIGS["r1_picking_up_trash"])
+        super().__init__(env, _get_task_config("r1_picking_up_trash"))
 
-
-
+class MG_R1TurningOnRadio(OmniGibsonInterfaceBimanual):
+    def __init__(self, env):
+        super().__init__(env, _get_task_config("r1_turning_on_radio"))

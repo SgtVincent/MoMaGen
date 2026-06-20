@@ -3,6 +3,8 @@ Base class for data generator.
 """
 import numpy as np
 import torch as th
+import os
+import json
 
 import momagen.utils.pose_utils as PoseUtils
 import momagen.utils.file_utils as MG_FileUtils
@@ -16,6 +18,7 @@ import omnigibson as og
 import omnigibson.utils.transform_utils as T
 from omnigibson.action_primitives.curobo import CuRoboEmbodimentSelection
 from omnigibson.robots.r1 import R1
+from omnigibson.robots.r1pro import R1Pro
 from omnigibson.robots.tiago import Tiago
 
 class DataGenerator(object):
@@ -71,6 +74,27 @@ class DataGenerator(object):
 
         # parse source dataset
         self._load_dataset(dataset_path=dataset_path, demo_keys=demo_keys)
+
+    @staticmethod
+    def _debug_goal_status(env, prefix):
+        """Print compact BDDL goal status at phase boundaries when debug is enabled."""
+        if not os.environ.get("MOMAGEN_DEBUG_PREDICATES"):
+            return None
+        try:
+            goal_status = env.env.task._termination_conditions["predicate"].goal_status
+            unsatisfied = [str(item) for item in goal_status.get("unsatisfied", [])]
+            satisfied = [str(item) for item in goal_status.get("satisfied", [])]
+            summary = {
+                "num_satisfied": len(satisfied),
+                "num_unsatisfied": len(unsatisfied),
+                "unsatisfied": unsatisfied,
+            }
+            print(f"[MOMAGEN_DEBUG_PREDICATES] {prefix}: {summary}")
+            return summary
+        except Exception as e:
+            summary = {"error": repr(e)}
+            print(f"[MOMAGEN_DEBUG_PREDICATES] {prefix}: failed to read goal status: {e}")
+            return summary
 
     def _load_dataset(self, dataset_path, demo_keys):
         """
@@ -334,7 +358,11 @@ class DataGenerator(object):
         annotations = None
         return annotations
 
-    def obtain_attached_object(self, env, robot, attached_obj_new={}, attached_obj_scale={}):
+    def obtain_attached_object(self, env, robot, attached_obj_new=None, attached_obj_scale=None):
+        if attached_obj_new is None:
+            attached_obj_new = {}
+        if attached_obj_scale is None:
+            attached_obj_scale = {}
         attached_object_names = {}
         for local_arm_side in ["left", "right"]:  
             is_grasping = robot.is_grasping(arm=local_arm_side)
@@ -570,9 +598,24 @@ class DataGenerator(object):
                     cur_datagen_info = env_interface.get_datagen_info()
                     subtask_object_name = cur_phase_task_spec[arm_i][subtask_ind]["object_ref"]
                     object_ref[arm_name] = subtask_object_name
-                    cur_object_pose = cur_datagen_info.object_poses[subtask_object_name] if (subtask_object_name is not None) else None # 4x4
                     key_name = arm_name.replace('arm_', '')
                     attached_obj_dict[key_name] = cur_phase_task_spec[arm_i][subtask_ind]["attached_obj"]
+                    transform_object_name = subtask_object_name
+                    if (
+                        transform_object_name is None
+                        and attached_obj_dict[key_name] is not None
+                        and os.environ.get("MOMAGEN_USE_ATTACHED_OBJ_AS_TRANSFORM_REF", "0") != "0"
+                    ):
+                        # Keep object_ref=None for MoMaGen phase semantics / reachability routing, but
+                        # express the attached arm's source EEF trajectory in the attached object's frame.
+                        # This avoids mixing a live object-frame left arm target with an absolute-world
+                        # right arm carry target during coordinated transport/toggle phases.
+                        transform_object_name = attached_obj_dict[key_name]
+                    cur_object_pose = (
+                        cur_datagen_info.object_poses[transform_object_name]
+                        if (transform_object_name is not None)
+                        else None
+                    ) # 4x4
                     MP_end_steps.append(end_step_of_MP_local[current_phase_ind][arm_i][subtask_ind])
                     
                     # get poses
@@ -595,16 +638,29 @@ class DataGenerator(object):
                     # hack when ref object is robot
                     if isinstance(env.robot, Tiago):
                         torso_link_name = "torso_lift_link"
-                    elif isinstance(env.robot, R1):
+                    elif isinstance(env.robot, (R1, R1Pro)):
                         torso_link_name = "torso_link4"
                     else:
                         raise ValueError("Robot type not supported")
-                    if subtask_object_name in ["robot_r1", torso_link_name]:
+                    object_ref_is_robot = transform_object_name in ["robot_r1", torso_link_name]
+                    per_frame_min_phase = int(os.environ.get("MOMAGEN_PER_FRAME_OBJECT_POSE_MIN_PHASE", "0") or 0)
+                    per_frame_max_phase = int(os.environ.get("MOMAGEN_PER_FRAME_OBJECT_POSE_MAX_PHASE", "999999") or 999999)
+                    use_per_frame_object_pose = (
+                        os.environ.get("MOMAGEN_PER_FRAME_OBJECT_POSE", "0") != "0"
+                        and transform_object_name is not None
+                        and not object_ref_is_robot
+                        and per_frame_min_phase <= int(current_phase_ind) <= per_frame_max_phase
+                    )
+                    if object_ref_is_robot:
                         frame_to_use_for_src_object_pose = end_step_of_MP_local[current_phase_ind][arm_i][subtask_ind]
                     else:
                         frame_to_use_for_src_object_pose = selected_src_subtask_inds[0]
                     # get reference object pose from source demo
-                    src_subtask_object_pose = src_ep_datagen_info.object_poses[subtask_object_name][frame_to_use_for_src_object_pose] if (subtask_object_name is not None) else None # 4 x 4
+                    src_subtask_object_pose = (
+                        src_ep_datagen_info.object_poses[transform_object_name][frame_to_use_for_src_object_pose]
+                        if (transform_object_name is not None)
+                        else None
+                    ) # 4 x 4
 
                     # src_eef_poses = np.array(src_subtask_eef_poses)
                     # if is_first_subtask or transform_first_robot_pose:
@@ -622,19 +678,50 @@ class DataGenerator(object):
 
                     src_eef_poses = src_subtask_eef_poses
                     # Transform source demonstration segment using relevant object pose.
-                    if subtask_object_name is not None:
+                    if transform_object_name is not None:
                         # print('cur_object_pose', cur_object_pose.shape)
                         # print('src_eef_poses', src_eef_poses.shape)
                         # print('src_subtask_object_pose', src_subtask_object_pose.shape)
 
+                        src_obj_pose_for_transform = src_subtask_object_pose
+                        cur_obj_pose_for_transform = cur_object_pose
+                        if use_per_frame_object_pose:
+                            src_obj_pose_for_transform = src_ep_datagen_info.object_poses[transform_object_name][
+                                selected_src_subtask_inds[0] : selected_src_subtask_inds[1]
+                            ]
+                            cur_obj_pose_for_transform = np.repeat(cur_object_pose[None], src_eef_poses.shape[0], axis=0)
+                            if os.environ.get("MOMAGEN_DEBUG_OBJECT_POSE_TRANSFORM"):
+                                src_obj_delta = np.linalg.norm(
+                                    src_obj_pose_for_transform[-1, :3, 3] - src_obj_pose_for_transform[0, :3, 3]
+                                )
+                                print(
+                                    "[MOMAGEN_OBJECT_POSE_TRANSFORM] "
+                                    f"phase={current_phase_ind} arm={arm_name} object={transform_object_name} "
+                                    f"object_ref={subtask_object_name} attached_obj={attached_obj_dict[key_name]} "
+                                    f"mode=per_frame T={src_eef_poses.shape[0]} src_obj_delta={src_obj_delta:.6f}"
+                                )
+                        elif os.environ.get("MOMAGEN_DEBUG_OBJECT_POSE_TRANSFORM"):
+                            print(
+                                "[MOMAGEN_OBJECT_POSE_TRANSFORM] "
+                                f"phase={current_phase_ind} arm={arm_name} object={transform_object_name} "
+                                f"object_ref={subtask_object_name} attached_obj={attached_obj_dict[key_name]} "
+                                f"mode=static src_frame={frame_to_use_for_src_object_pose} "
+                                f"cur_obj_pos={cur_object_pose[:3, 3].tolist()} "
+                                f"src_obj_pos={src_subtask_object_pose[:3, 3].tolist()}",
+                                flush=True,
+                            )
+
                         # If the object is symmetric, we don't need to transform the rotation part of the object pose
                         if local_task_spec[subtask_ind]["symmetric_object"]:
-                            cur_object_pose[:3, :3] = src_subtask_object_pose[:3, :3]
+                            if use_per_frame_object_pose:
+                                cur_obj_pose_for_transform[:, :3, :3] = src_obj_pose_for_transform[:, :3, :3]
+                            else:
+                                cur_obj_pose_for_transform[:3, :3] = src_obj_pose_for_transform[:3, :3]
 
                         transformed_eef_poses = PoseUtils.transform_source_data_segment_using_object_pose(
-                            obj_pose=cur_object_pose, 
+                            obj_pose=cur_obj_pose_for_transform,
                             src_eef_poses=src_eef_poses,
-                            src_obj_pose=src_subtask_object_pose)
+                            src_obj_pose=src_obj_pose_for_transform)
                         # transformed_eef_poses = np.concatenate([transformed_eef_poses_left, transformed_eef_poses_right], axis=1)
                     else:
                         # skip transformation if no reference object is provided
@@ -731,7 +818,7 @@ class DataGenerator(object):
                     # TODO: this is a hacky for handling clean pan task. Improve this
                     if isinstance(env.robot, Tiago):
                         torso_link_name = "torso_lift_link"
-                    elif isinstance(env.robot, R1):
+                    elif isinstance(env.robot, (R1, R1Pro)):
                         torso_link_name = "torso_link4"
                     else:
                         raise ValueError("Robot type not supported")
@@ -829,14 +916,95 @@ class DataGenerator(object):
                         #                                                         ik_world_collision_check=True,
                         #                                                         emb_sel=CuRoboEmbodimentSelection.ARM_NO_TORSO)
                         
-                        eyes_pose = env.robot.links["eyes"].get_position_orientation()
-                        reachable_and_visible = env.primitive._target_in_reach_of_robot_and_visible(target_pose=eef_pose,
-                                                                                initial_joint_pos=env.robot.get_joint_positions(),
-                                                                                skip_obstacle_update=False,
-                                                                                ik_world_collision_check=True,
-                                                                                emb_sel=CuRoboEmbodimentSelection.ARM_NO_TORSO,
-                                                                                attach_obj=True,
-                                                                                eyes_pose=eyes_pose,)
+                        eyes_link = env.robot.links.get("eyes")
+                        eyes_pose = eyes_link.get_position_orientation() if eyes_link is not None else None
+                        arm_no_torso_emb_sel = getattr(
+                            CuRoboEmbodimentSelection,
+                            "ARM_NO_TORSO",
+                            CuRoboEmbodimentSelection.ARM,
+                        )
+                        if os.environ.get("MOMAGEN_DEBUG_PHASE_ROUTING"):
+                            eef_pose_debug = {}
+                            for arm_key, (pos, _ori) in eef_pose.items():
+                                try:
+                                    cur_eef_pos = env.robot.eef_links[arm_key].get_position_orientation()[0]
+                                    eef_pose_debug[arm_key] = {
+                                        "target_pos": pos.detach().cpu().numpy().tolist() if hasattr(pos, "detach") else np.asarray(pos).tolist(),
+                                        "cur_pos": cur_eef_pos.detach().cpu().numpy().tolist() if hasattr(cur_eef_pos, "detach") else np.asarray(cur_eef_pos).tolist(),
+                                        "dist": float(th.linalg.norm(cur_eef_pos - pos)),
+                                    }
+                                except Exception as e:
+                                    eef_pose_debug[arm_key] = {"error": f"{type(e).__name__}: {e}"}
+                            print(
+                                "[MOMAGEN_PHASE_ROUTING] "
+                                + json.dumps(
+                                    {
+                                        "phase": int(current_phase_ind),
+                                        "subtask": int(subtask_ind_reordered),
+                                        "phase_type": phase_type,
+                                        "object_ref": {k: (getattr(v, "name", None) or v) for k, v in object_ref.items()},
+                                        "attached_obj_template": attached_obj_dict,
+                                        "attached_obj_actual_keys": list(attached_obj_new.keys()) if attached_obj_new is not None else [],
+                                        "eef_pose_arms_for_reachability": list(eef_pose.keys()),
+                                        "eef_pose_debug": eef_pose_debug,
+                                    },
+                                    default=str,
+                                ),
+                                flush=True,
+                            )
+
+                        if hasattr(env.primitive, "_target_in_reach_of_robot_and_visible"):
+                            reachable_and_visible = env.primitive._target_in_reach_of_robot_and_visible(target_pose=eef_pose,
+                                                                                    initial_joint_pos=env.robot.get_joint_positions(),
+                                                                                    skip_obstacle_update=False,
+                                                                                    ik_world_collision_check=True,
+                                                                                    emb_sel=arm_no_torso_emb_sel,
+                                                                                    attach_obj=True,
+                                                                                    eyes_pose=eyes_pose,)
+                        else:
+                            if bool(int(os.environ.get("MOMAGEN_ALLOW_DISTANCE_REACHABILITY_FALLBACK", "0") or 0)):
+                                fallback_reachability_dist = float(
+                                    os.environ.get("MOMAGEN_REACHABILITY_FALLBACK_MAX_EEF_DIST", "1.25") or 1.25
+                                )
+                                relevant_eef_dists = []
+                                if object_ref["arm_left"] is not None:
+                                    cur_left_eef_pos = env.robot.eef_links["left"].get_position_orientation()[0]
+                                    relevant_eef_dists.append(float(th.linalg.norm(cur_left_eef_pos - left_waypoint_pos)))
+                                if object_ref["arm_right"] is not None:
+                                    cur_right_eef_pos = env.robot.eef_links["right"].get_position_orientation()[0]
+                                    relevant_eef_dists.append(float(th.linalg.norm(cur_right_eef_pos - right_waypoint_pos)))
+                                max_relevant_eef_dist = max(relevant_eef_dists) if relevant_eef_dists else 0.0
+                                reachable_and_visible = max_relevant_eef_dist <= fallback_reachability_dist
+                                print(
+                                    "Reachability/visibility helper unavailable; using diagnostic distance fallback: "
+                                    f"max_eef_target_dist={max_relevant_eef_dist:.3f}, "
+                                    f"threshold={fallback_reachability_dist:.3f}, "
+                                    f"reachable_and_visible={reachable_and_visible}"
+                                )
+                            else:
+                                reachable_and_visible = False
+                                print(
+                                    "Reachability/visibility helper unavailable; fail-closed. "
+                                    "Set MOMAGEN_ALLOW_DISTANCE_REACHABILITY_FALLBACK=1 only for diagnostic runs."
+                                )
+                        if (
+                            not reachable_and_visible
+                            and bool(int(os.environ.get("MOMAGEN_SKIP_NAV_FOR_SOURCE_BASE_PREAPPROACH", "0") or 0))
+                            and int(os.environ.get("MOMAGEN_SOURCE_BASE_PREAPPROACH_STEPS", "0") or 0) != 0
+                            and int(os.environ.get("MOMAGEN_SOURCE_BASE_PREAPPROACH_MIN_PHASE", "0") or 0)
+                            <= int(env.execution_phase_ind)
+                            <= int(os.environ.get("MOMAGEN_SOURCE_BASE_PREAPPROACH_MAX_PHASE", "999999") or 999999)
+                            and attached_obj_new is not None
+                        ):
+                            # Diagnostic carry-phase path: if an object is already attached and the current source
+                            # segment contains base transport, let WaypointTrajectory.execute replay the bounded source
+                            # base preapproach before ARM MP instead of first forcing OG's random near-object nav sampler.
+                            # This is disabled by default and does not affect initial grasp phases where no object is held.
+                            print(
+                                "[MOMAGEN_SKIP_NAV_FOR_SOURCE_BASE_PREAPPROACH] "
+                                "treating carry phase as reachable so source base preapproach can run before ARM MP"
+                            )
+                            reachable_and_visible = True
                         print("object to be manipulated is reachable and visible: ", reachable_and_visible)
                         # ======================== End of reachibility and visibility check =========================
                 # If we are in the debugging mode of "manipulation_only" for pick_cup task, don't check reachability and visibility
@@ -849,7 +1017,7 @@ class DataGenerator(object):
                     if not reachable_and_visible or nav_try > 0:
                         print("=========== Navigation phase ===========")
                         # Execute the navigation trajectory and collect data.
-                        exec_results = traj_to_execute.execute(
+                        execute_kwargs = dict(
                             env=env,
                             env_interface=env_interface,
                             render=render,
@@ -867,6 +1035,27 @@ class DataGenerator(object):
                             grasp_init_views_video_writer=grasp_init_views_video_writer,
                             phase_logs=phase_logs,
                         )
+                        src_curr_phase_actions = self.src_actions[selected_src_demo_ind][
+                            selected_src_subtask_inds[0] : selected_src_subtask_inds[1]
+                        ]
+                        src_curr_phase_base_pose = None
+                        if getattr(src_ep_datagen_info, "base_pose", None) is not None:
+                            src_curr_phase_base_pose = src_ep_datagen_info.base_pose[
+                                selected_src_subtask_inds[0] : selected_src_subtask_inds[1]
+                            ]
+                        if baseline in ["mimicgen", "skillgen"]:
+                            exec_results = traj_to_execute.execute_baseline(
+                                **execute_kwargs,
+                                baseline=baseline,
+                                src_curr_phase_actions=src_curr_phase_actions,
+                                src_curr_phase_base_pose=src_curr_phase_base_pose,
+                            )
+                        else:
+                            exec_results = traj_to_execute.execute(
+                                **execute_kwargs,
+                                src_curr_phase_actions=src_curr_phase_actions,
+                                src_curr_phase_base_pose=src_curr_phase_base_pose,
+                            )
                         # To let any remaining simulation steps finish.
                         for _ in range(50): og.sim.step()
                     
@@ -921,7 +1110,7 @@ class DataGenerator(object):
                     # 2. Now we can execute the manipulation segment
                     print("=========== Manipulation phase ===========")
                     # Execute the manipulation trajectory and collect data.
-                    exec_results = traj_to_execute.execute(
+                    execute_kwargs = dict(
                         env=env,
                         env_interface=env_interface,
                         render=render,
@@ -938,10 +1127,45 @@ class DataGenerator(object):
                         ds_ratio=ds_ratio,
                         grasp_init_views_video_writer=grasp_init_views_video_writer,
                         phase_logs=phase_logs,
-                        retract_type=retract_type
+                        retract_type=retract_type,
                     )
+                    src_curr_phase_actions = self.src_actions[selected_src_demo_ind][
+                        selected_src_subtask_inds[0] : selected_src_subtask_inds[1]
+                    ]
+                    src_curr_phase_base_pose = None
+                    if getattr(src_ep_datagen_info, "base_pose", None) is not None:
+                        src_curr_phase_base_pose = src_ep_datagen_info.base_pose[
+                            selected_src_subtask_inds[0] : selected_src_subtask_inds[1]
+                        ]
+                    if baseline in ["mimicgen", "skillgen"]:
+                        exec_results = traj_to_execute.execute_baseline(
+                            **execute_kwargs,
+                            baseline=baseline,
+                            src_curr_phase_actions=src_curr_phase_actions,
+                            src_curr_phase_base_pose=src_curr_phase_base_pose,
+                        )
+                    else:
+                        exec_results = traj_to_execute.execute(
+                            **execute_kwargs,
+                            src_curr_phase_actions=src_curr_phase_actions,
+                            src_curr_phase_base_pose=src_curr_phase_base_pose,
+                        )
                     # To let any remaining simulation steps finish.
                     for _ in range(50): og.sim.step()
+                    goal_status_after_phase = self._debug_goal_status(
+                        env,
+                        prefix=f"after phase {current_phase_ind}",
+                    )
+                    try:
+                        success_after_phase = env.is_success()
+                    except Exception as e:
+                        success_after_phase = {"error": f"{type(e).__name__}: {e}"}
+                    phase_logs.setdefault(current_phase_ind, {})["post_phase_success_metrics"] = {
+                        str(k): (bool(v) if isinstance(v, (bool, np.bool_)) else str(v))
+                        for k, v in success_after_phase.items()
+                    }
+                    if goal_status_after_phase is not None:
+                        phase_logs.setdefault(current_phase_ind, {})["goal_status_after_phase"] = goal_status_after_phase
                 
                     # Early terminate if the expecetd attached obj (according to the template) is not what is actually in the gripper
                     if current_phase_ind < self.num_phases - 1:
@@ -949,6 +1173,15 @@ class DataGenerator(object):
                         left_expected_attached_obj = next_phase_task_spec[0][0]["attached_obj"]
                         right_expected_attached_obj = next_phase_task_spec[1][0]["attached_obj"]
                         attached_object_names = self.obtain_attached_object(env, env.robot)
+                        attached_object_check = {
+                            "left_expected": left_expected_attached_obj,
+                            "right_expected": right_expected_attached_obj,
+                            "actual": attached_object_names,
+                            "goal_status": goal_status_after_phase,
+                        }
+                        if os.environ.get("MOMAGEN_DEBUG_PREDICATES"):
+                            print(f"[MOMAGEN_DEBUG_PREDICATES] attached object check after phase {current_phase_ind}: {attached_object_check}")
+                        phase_logs.setdefault(current_phase_ind, {})["attached_object_check"] = attached_object_check
                         attached_object_mismatch = False
                         # If left eef actually has an object 
                         if "left" in attached_object_names.keys():
@@ -969,7 +1202,10 @@ class DataGenerator(object):
                         
                         if attached_object_mismatch:
                             print("Attached object mismatch, terminating early")
+                            phase_logs[current_phase_ind]["attached_object_mismatch"] = True
                             exec_results = None
+                        else:
+                            phase_logs[current_phase_ind]["attached_object_mismatch"] = False
                     
                     # This means that the the current phase failed
                     if exec_results is None:
@@ -1018,6 +1254,36 @@ class DataGenerator(object):
                         generated_src_demo_inds.append(selected_src_demo_ind)
                         generated_src_demo_labels.append(selected_src_demo_ind * np.ones((exec_results["actions"].shape[0], 1), dtype=int))
 
+                    stop_after_phase_raw = os.environ.get("MOMAGEN_STOP_AFTER_PHASE_INDEX", "").strip()
+                    if stop_after_phase_raw and current_phase_ind >= int(stop_after_phase_raw):
+                        phase_logs.setdefault(current_phase_ind, {})["diagnostic_stop_after_phase"] = {
+                            "enabled": True,
+                            "stop_after_phase_index": int(stop_after_phase_raw),
+                            "current_phase_ind": int(current_phase_ind),
+                        }
+                        if len(generated_actions) > 0:
+                            generated_actions = np.concatenate(generated_actions, axis=0)
+                            generated_src_demo_labels = np.concatenate(generated_src_demo_labels, axis=0)
+                        return dict(
+                            initial_state=new_initial_state,
+                            states=generated_states,
+                            observations=generated_obs,
+                            observations_info=generated_obs_info,
+                            datagen_infos=generated_datagen_infos,
+                            actions=generated_actions,
+                            success=generated_success,
+                            src_demo_inds=generated_src_demo_inds,
+                            src_demo_labels=generated_src_demo_labels,
+                            mp_end_steps=generated_demo_mp_end_steps,
+                            subtask_lengths=generated_demo_subtask_lengths,
+                            sensor_info=sensor_info,
+                            partial=True,
+                            phases_completed=env.phases_completed_wo_mp_err,
+                            left_mp_ranges=generated_demo_left_mp_ranges,
+                            right_mp_ranges=generated_demo_right_mp_ranges,
+                            phase_logs=phase_logs,
+                        )
+
                     # In most cases we don't need to retry nav. This is only trigered if manipulation MP (arm_no_torso mode) fails due to IK or TrajOpt failure 
                     if not exec_results["retry_nav"]:
                         break
@@ -1030,6 +1296,18 @@ class DataGenerator(object):
         if len(generated_actions) > 0:
             generated_actions = np.concatenate(generated_actions, axis=0)
             generated_src_demo_labels = np.concatenate(generated_src_demo_labels, axis=0)
+
+        final_goal_status = self._debug_goal_status(env, prefix="final result")
+        try:
+            final_success_metrics = env.is_success()
+        except Exception as e:
+            final_success_metrics = {"error": f"{type(e).__name__}: {e}"}
+        phase_logs.setdefault("final", {})["success_metrics"] = {
+            str(k): (bool(v) if isinstance(v, (bool, np.bool_)) else str(v))
+            for k, v in final_success_metrics.items()
+        }
+        if final_goal_status is not None:
+            phase_logs.setdefault("final", {})["goal_status"] = final_goal_status
 
         results = dict(
             initial_state=new_initial_state,

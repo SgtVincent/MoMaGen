@@ -16,6 +16,7 @@ import shutil
 import json
 import h5py
 import argparse
+import tempfile
 import numpy as np
 from tqdm import tqdm
 import robomimic
@@ -28,6 +29,68 @@ import momagen.utils.file_utils as MG_FileUtils
 from momagen.env_interfaces.base import make_interface
 from omnigibson.envs import DataPlaybackWrapper
 from omnigibson.macros import gm
+
+
+class DatagenInfoPlaybackWrapper(DataPlaybackWrapper):
+    """Compatibility wrapper for MoMaGen source-demo annotation.
+
+    The current BEHAVIOR-1K DataPlaybackWrapper does not expose MoMaGen's older
+    callback-based ``playback_dataset`` API and also requires a concrete output
+    HDF5 path. This thin subclass records per-step datagen callbacks while still
+    using the upstream replay logic, and suppresses heavy observation writes to
+    the temporary playback HDF5.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.datagen_callback = None
+        self.current_datagen_info = []
+        super().__init__(*args, **kwargs)
+
+    def _process_obs(self, obs, info):
+        del obs, info
+        return {}
+
+    def _parse_step_data(self, action, obs, reward, terminated, truncated, info):
+        if self.datagen_callback is not None:
+            if hasattr(action, "detach"):
+                callback_action = action.detach().cpu().numpy()
+            else:
+                callback_action = np.asarray(action)
+            self.current_datagen_info.append(self.datagen_callback(action=callback_action))
+
+        return super()._parse_step_data(
+            action=action,
+            obs=obs,
+            reward=reward,
+            terminated=terminated,
+            truncated=truncated,
+            info=info,
+        )
+
+
+def _maybe_preprocess_omnigibson_dataset(dataset_path):
+    preprocess_omnigibson_dataset = getattr(FileUtils, "preprocess_omnigibson_dataset", None)
+    if preprocess_omnigibson_dataset is None:
+        print("robomimic FileUtils.preprocess_omnigibson_dataset not found; skipping optional preprocessing")
+        return
+    preprocess_omnigibson_dataset(dataset_path)
+
+
+def _get_env_metadata_for_logging(dataset_path):
+    try:
+        return FileUtils.get_env_metadata_from_dataset(dataset_path=dataset_path)
+    except Exception as exc:
+        print("Could not read robomimic env_args metadata: {}".format(exc))
+        with h5py.File(dataset_path, "r") as f:
+            data_attrs = f["data"].attrs
+            if "config" not in data_attrs:
+                raise
+            config = json.loads(data_attrs["config"])
+            return {
+                "env_name": config.get("task", {}).get("activity_name", "omnigibson_raw_hdf5"),
+                "type": "omnigibson_raw_config_scene_file",
+                "env_kwargs": config,
+            }
 
 
 def extract_datagen_info_from_trajectory(
@@ -131,18 +194,21 @@ def prepare_src_dataset(
     shutil.copy(dataset_path, output_path)
 
     if env_interface_type == "omnigibson" or env_interface_type == "omnigibson_bimanual":
-        FileUtils.preprocess_omnigibson_dataset(dataset_path)
+        _maybe_preprocess_omnigibson_dataset(dataset_path)
 
     # create environment that was to collect source demonstrations
-    env_meta = FileUtils.get_env_metadata_from_dataset(dataset_path=dataset_path)
+    env_meta = _get_env_metadata_for_logging(dataset_path=dataset_path)
 
     print("==== Using environment with the following metadata ====")
     print(env_meta)
 
     gm.ENABLE_TRANSITION_RULES = False
-    env = DataPlaybackWrapper.create_from_hdf5(
+    tmp_playback_file = tempfile.NamedTemporaryFile(suffix=".hdf5", delete=False)
+    tmp_playback_path = tmp_playback_file.name
+    tmp_playback_file.close()
+    env = DatagenInfoPlaybackWrapper.create_from_hdf5(
         input_path=dataset_path,
-        output_path=None,
+        output_path=tmp_playback_path,
         robot_obs_modalities=(),
         robot_sensor_config=None,
         external_sensors_config=None,
@@ -166,11 +232,6 @@ def prepare_src_dataset(
         start=None,
         n=n,
     )
-
-    demo_ids = None
-    # Only playback the demos filtered by the filter_key
-    if filter_key is not None:
-        demo_ids = [int(demo.split("_")[-1]) for demo in demos]
 
     print("File that will be modified with datagen info: {}".format(dataset_path))
 
@@ -196,12 +257,22 @@ def prepare_src_dataset(
     #     robot.links[eef_link_name].visual_meshes["VisualSphere"].visible = False
     # # ============================================================================================
 
-    all_datagen_info = env.playback_dataset(record_data=False, 
-                                            callback=env_interface.get_datagen_info, 
-                                            demo_ids=demo_ids,
-                                            replay_for_annotation=replay_for_annotation)
+    if replay_for_annotation:
+        print("replay_for_annotation is not supported by the local compatibility playback path; replaying normally")
+
+    env.datagen_callback = env_interface.get_datagen_info
+    all_datagen_info = []
+    for demo in demos:
+        episode_id = int(demo.split("_")[-1])
+        env.current_datagen_info = []
+        env.playback_episode(episode_id=episode_id, record_data=True)
+        all_datagen_info.append(env.current_datagen_info)
 
     env.input_hdf5.close()
+    if getattr(env, "hdf5_file", None) is not None:
+        env.hdf5_file.close()
+    if os.path.exists(tmp_playback_path):
+        os.remove(tmp_playback_path)
     
     if not generate_processed_hdf5:
         print("Not generating the processed hdf5. Only used to visualize the collected demo")

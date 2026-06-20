@@ -1,0 +1,4381 @@
+{
+  "dataset": "/tmp/momagen_turning_on_radio_round60/A201_seed4_predicate_hold_repeatability_seq/demo_src_r1_turning_on_radio_task_D0/demo.hdf5",
+  "start": 805,
+  "end": 811,
+  "summary": {
+    "num_records": 7,
+    "first_task_success_step": 805,
+    "first_toggle_value_step": 811,
+    "first_can_toggle_step": 807,
+    "first_primary_overlap_step": 807,
+    "max_robot_can_toggle_steps": 5,
+    "best_left_finger_dist": {
+      "step": 811,
+      "object": "radio_89",
+      "dist": 0.014016106915406702,
+      "link": "robot_r1:left_gripper_finger_link2"
+    },
+    "state_error": {
+      "max_abs_max": 1.0,
+      "mean_abs_max": 0.0011116496906186956,
+      "l2_max": 1.0241463412475997,
+      "shape_mismatch_steps": []
+    }
+  },
+  "records": [
+    {
+      "step": 805,
+      "success": {
+        "task": true
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 0,
+          "obj_in_finger_contact_objs": false,
+          "marker_pos": [
+            3.531797409057617,
+            4.79573917388916,
+            0.5166338682174683
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 0.31148229692325974
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link1",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+              "dist": 0.3306104421963401
+            }
+          },
+          "overlap_primary_hit": false,
+          "overlap_first_hit_radius": null,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": false,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": false,
+              "num_hits": 6,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": false,
+              "num_hits": 7,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": false,
+              "num_hits": 9,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/coffee_table_koagbh_0/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 1.3675484484964352e-06,
+        "mean_abs": 4.56708378428889e-09,
+        "max_abs": 4.76837158203125e-07
+      }
+    },
+    {
+      "step": 806,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 0,
+          "obj_in_finger_contact_objs": true,
+          "marker_pos": [
+            3.397146463394165,
+            4.595342636108398,
+            0.6929668188095093
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 0.05421848090587992
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link1",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+              "dist": 0.16622319918213513
+            }
+          },
+          "overlap_primary_hit": false,
+          "overlap_first_hit_radius": 0.03,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": false,
+              "num_hits": 2,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": true,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": true,
+              "num_hits": 9,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": true,
+              "num_hits": 12,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": true,
+              "num_hits": 21,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": true,
+              "num_hits": 30,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": true,
+              "num_hits": 36,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 1.0071480623723328,
+        "mean_abs": 0.0008767626914614479,
+        "max_abs": 1.0
+      }
+    },
+    {
+      "step": 807,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 1,
+          "obj_in_finger_contact_objs": true,
+          "marker_pos": [
+            3.391903877258301,
+            4.5928120613098145,
+            0.6836423277854919
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 0.044704617219697096
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link1",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+              "dist": 0.16611326925242711
+            }
+          },
+          "overlap_primary_hit": true,
+          "overlap_first_hit_radius": 0.02235804684460163,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": true,
+              "num_hits": 4,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": true,
+              "num_hits": 6,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": true,
+              "num_hits": 9,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": true,
+              "num_hits": 13,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": true,
+              "num_hits": 26,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": true,
+              "num_hits": 32,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": true,
+              "num_hits": 38,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 1.0175333124856474,
+        "mean_abs": 0.0009729660425206943,
+        "max_abs": 1.0
+      }
+    },
+    {
+      "step": 808,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 2,
+          "obj_in_finger_contact_objs": true,
+          "marker_pos": [
+            3.3872263431549072,
+            4.590561866760254,
+            0.6734545230865479
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 0.03586246909695735
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link1",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+              "dist": 0.166096434614646
+            }
+          },
+          "overlap_primary_hit": true,
+          "overlap_first_hit_radius": 0.02235804684460163,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": true,
+              "num_hits": 4,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": true,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": true,
+              "num_hits": 10,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": true,
+              "num_hits": 20,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": true,
+              "num_hits": 28,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": true,
+              "num_hits": 32,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": true,
+              "num_hits": 47,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 1.0087501847517661,
+        "mean_abs": 0.0009157046349995416,
+        "max_abs": 1.0
+      }
+    },
+    {
+      "step": 809,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 3,
+          "obj_in_finger_contact_objs": true,
+          "marker_pos": [
+            3.3839008808135986,
+            4.589174747467041,
+            0.6657389402389526
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 0.027629589001330605
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link1",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+              "dist": 0.16603638628898032
+            }
+          },
+          "overlap_primary_hit": true,
+          "overlap_first_hit_radius": 0.02235804684460163,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": true,
+              "num_hits": 4,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": true,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": true,
+              "num_hits": 12,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": true,
+              "num_hits": 21,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": true,
+              "num_hits": 29,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": true,
+              "num_hits": 32,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": true,
+              "num_hits": 47,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 1.0224110097673342,
+        "mean_abs": 0.0010743965245831088,
+        "max_abs": 1.0
+      }
+    },
+    {
+      "step": 810,
+      "success": {
+        "task": false
+      },
+      "objects": {
+        "radio_89": {
+          "value": false,
+          "robot_can_toggle_steps": 4,
+          "obj_in_finger_contact_objs": true,
+          "marker_pos": [
+            3.3823750019073486,
+            4.587262153625488,
+            0.6622292995452881
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 0.019186464088931
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link1",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+              "dist": 0.16610789705452514
+            }
+          },
+          "overlap_primary_hit": true,
+          "overlap_first_hit_radius": 0.02235804684460163,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": true,
+              "num_hits": 4,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": true,
+              "num_hits": 5,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": true,
+              "num_hits": 14,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": true,
+              "num_hits": 25,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": true,
+              "num_hits": 31,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": true,
+              "num_hits": 39,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": true,
+              "num_hits": 47,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      },
+      "state_error_vs_hdf5": {
+        "shape_match": true,
+        "l2": 1.0241463412475997,
+        "mean_abs": 0.0011116496906186956,
+        "max_abs": 1.0
+      }
+    },
+    {
+      "step": 811,
+      "success": {
+        "task": true
+      },
+      "objects": {
+        "radio_89": {
+          "value": true,
+          "robot_can_toggle_steps": 5,
+          "obj_in_finger_contact_objs": true,
+          "marker_pos": [
+            3.3825716972351074,
+            4.585586071014404,
+            0.6615105271339417
+          ],
+          "marker_radius": 0.02235804684460163,
+          "finger_min_dist_to_marker": {
+            "left": {
+              "link": "robot_r1:left_gripper_finger_link2",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "dist": 0.014016106915406702
+            },
+            "right": {
+              "link": "robot_r1:right_gripper_finger_link1",
+              "prim_path": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+              "dist": 0.1660833330739246
+            }
+          },
+          "overlap_primary_hit": true,
+          "overlap_first_hit_radius": 0.02235804684460163,
+          "overlap_probes": [
+            {
+              "radius": 0.02235804684460163,
+              "valid_robot_finger_hit": true,
+              "num_hits": 4,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.03,
+              "valid_robot_finger_hit": true,
+              "num_hits": 8,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.05,
+              "valid_robot_finger_hit": true,
+              "num_hits": 20,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.075,
+              "valid_robot_finger_hit": true,
+              "num_hits": 28,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.1,
+              "valid_robot_finger_hit": true,
+              "num_hits": 31,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.125,
+              "valid_robot_finger_hit": true,
+              "num_hits": 43,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            },
+            {
+              "radius": 0.15,
+              "valid_robot_finger_hit": true,
+              "num_hits": 48,
+              "hits": [
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/radio_89/base_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_arm_link7",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_realsense_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_link",
+                  "is_robot_finger": false
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                },
+                {
+                  "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+                  "is_robot_finger": true
+                }
+              ]
+            }
+          ],
+          "finger_paths": [
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link1",
+            "/World/scene_0/controllable__r1pro__robot_r1/right_gripper_finger_link2"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -157,3 +157,14 @@ class R1PickingUpTrash(MG_Config):
         # allow downstream code to completely replace the task spec from an external config
         self.task.task_spec.do_not_lock_keys()
 
+class R1TurningOnRadio(MG_Config):
+    """
+    Minimal config registry entry for BEHAVIOR-1K turning_on_radio.
+    """
+    NAME = "r1_turning_on_radio"
+    TYPE = "omnigibson_bimanual"
+
+    def task_config(self):
+        self.task.task_spec.phase1 = dict()
+        # allow downstream code to completely replace the task spec from an external config
+        self.task.task_spec.do_not_lock_keys()

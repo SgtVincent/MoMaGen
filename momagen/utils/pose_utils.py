@@ -10,7 +10,7 @@ import numpy as np
 
 import omnigibson.utils.transform_utils as T
 from omnigibson.utils.transform_utils_np import (
-    make_pose,
+    make_pose as _make_pose,
     quat2axisangle, axisangle2quat, quat_slerp
 )
 from omnigibson.utils.transform_utils_np import pose_inv as _pose_inv
@@ -80,6 +80,20 @@ def unmake_pose(pose):
     return pose[..., :3, 3], pose[..., :3, :3]
 
 
+def make_pose(translation, rotation):
+    """Make homogeneous pose matrix, supporting both single and batched inputs."""
+    translation = np.asarray(translation)
+    rotation = np.asarray(rotation)
+    if translation.ndim == 1 and rotation.ndim == 2:
+        return _make_pose(translation, rotation)
+
+    pose = np.zeros(rotation.shape[:-2] + (4, 4), dtype=np.result_type(translation, rotation))
+    pose[..., :3, :3] = rotation
+    pose[..., :3, 3] = translation
+    pose[..., 3, 3] = 1.0
+    return pose
+
+
 def quat2axisangle_separate(quat):
     """
     Converts (x, y, z, w) quaternion to axis-angle format.
@@ -138,7 +152,7 @@ def interpolate_rotations(R1, R2, num_steps, axis_angle=True):
     else:
         q1 = T.mat2quat(R1)
         q2 = T.mat2quat(R2)
-        rot_steps = np.array([T.quat2mat(quat_slerp(q1, q2, tau=(float(i) / num_steps))) for i in range(num_steps)])
+        rot_steps = np.array([T.quat2mat(quat_slerp(q1, q2, fraction=(float(i) / num_steps))) for i in range(num_steps)])
     
     # add in endpoint
     rot_steps = np.concatenate([rot_steps, R2[None]], axis=0)
@@ -216,21 +230,32 @@ def transform_source_data_segment_using_object_pose(
     target eef poses.
 
     Args:
-        obj_pose (np.array): 4x4 object pose in current scene
+        obj_pose (np.array): 4x4 object pose in current scene, or a per-timestep
+            sequence of object poses with shape (T, 4, 4)
         src_eef_poses (np.array): pose sequence (shape [T, 4, 4]) for the sequence of end effector control poses 
             from the source demonstration
-        src_obj_pose (np.array): 4x4 object pose from the source demonstration
+        src_obj_pose (np.array): 4x4 object pose from the source demonstration, or a
+            per-timestep sequence of source object poses with shape (T, 4, 4)
 
     Returns:
         transformed_eef_poses (np.array): transformed pose sequence (shape [T, 4, 4])
     """
+
+    obj_pose = np.asarray(obj_pose)
+    src_eef_poses = np.asarray(src_eef_poses)
+    src_obj_pose = np.asarray(src_obj_pose)
+
+    if obj_pose.ndim == 2:
+        obj_pose = obj_pose[None]
+    if src_obj_pose.ndim == 2:
+        src_obj_pose = src_obj_pose[None]
 
     # transform source end effector poses to be relative to source object frame
 
     # convert these eef poses from frame A (world frame) to frame B (source object frame)
     src_eef_poses_rel_obj = pose_in_A_to_pose_in_B(
         pose_in_A=src_eef_poses,
-        pose_A_in_B=pose_inv(src_obj_pose[None]),
+        pose_A_in_B=pose_inv(src_obj_pose),
     )
 
     # apply relative poses to current object frame to obtain new target eef poses
@@ -238,6 +263,6 @@ def transform_source_data_segment_using_object_pose(
     # convert these eef poses from frame A (new object frame) to frame B (world frame)
     transformed_eef_poses = pose_in_A_to_pose_in_B(
         pose_in_A=src_eef_poses_rel_obj,
-        pose_A_in_B=obj_pose[None],
+        pose_A_in_B=obj_pose,
     )
     return transformed_eef_poses

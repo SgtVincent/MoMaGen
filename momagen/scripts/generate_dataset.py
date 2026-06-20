@@ -24,6 +24,7 @@ import argparse
 import traceback
 import random
 import imageio
+import h5py
 import numpy as np
 import torch as th
 import warnings
@@ -53,6 +54,45 @@ from omnigibson.objects.primitive_object import PrimitiveObject
 
 # Disable pyembree for trimesh
 os.environ["TRIMESH_NO_PYEMBREE"] = "1"
+
+
+def _get_source_env_metadata(dataset_path, env_name_override=None):
+    """Return robomimic-style env metadata for a source dataset.
+
+    Newer BEHAVIOR-1K / JoyLo HDF5 files store OmniGibson metadata in
+    ``data.attrs["config"]`` + ``data.attrs["scene_file"]`` instead of the
+    robomimic ``env_args`` attribute expected by upstream MoMaGen. Keep the
+    standard robomimic path first, but reconstruct the minimal OG metadata when
+    ``env_args`` is missing so the standard MoMaGen source path remains:
+
+        raw replayable HDF5 -> prepare_src_dataset.py -> processed HDF5
+        with datagen_info -> generate_dataset.py
+
+    This does not fabricate datagen_info and does not bypass simulator replay;
+    it only bridges metadata format drift for already processed source demos.
+    """
+    try:
+        return get_env_metadata_from_dataset(dataset_path=dataset_path)
+    except Exception as exc:
+        print("Could not read robomimic env_args metadata: {}".format(exc))
+
+    with h5py.File(dataset_path, "r") as f:
+        data_attrs = f["data"].attrs
+        if "config" not in data_attrs:
+            raise KeyError(
+                "Source dataset is missing both robomimic data.attrs['env_args'] "
+                "and OmniGibson data.attrs['config']; cannot create generation env metadata."
+            )
+        config = json.loads(data_attrs["config"])
+
+    env_name = env_name_override or config.get("task", {}).get("activity_name", "omnigibson_raw_hdf5")
+    # EnvOmniGibson wrapper in momagen.utils.robomimic_utils treats integer 4
+    # as OG_TYPE for older robomimic installations that do not define it.
+    return {
+        "env_name": env_name,
+        "type": 4,
+        "env_kwargs": config,
+    }
 
 def visualize_base_poses(env):
     """Visualize base poses with colored markers (debug function)."""
@@ -154,6 +194,7 @@ def generate_dataset(
     ds_ratio=1,
     no_partial_tasks=False,
     headless=False,
+    manipulation_only=False,
     baseline=None,
     robot_type="R1",
 ):
@@ -195,7 +236,11 @@ def generate_dataset(
     script_start_time = time.time()
 
     # check some args
-    write_video = not no_save_video
+    # Honor the config-level video switch. The original script only respected the
+    # CLI --no_video_save flag, which meant even configs with
+    # experiment.render_video=false still tried to create debug videos and needed
+    # a robomimic DEFAULT_CAMERAS entry for OG_TYPE.
+    write_video = bool(mg_config.experiment.render_video) and (not no_save_video)
     assert not (render and write_video) # either on-screen or video but not both
     if pause_subtask:
         assert render, "should enable on-screen rendering for pausing to be useful"
@@ -210,7 +255,10 @@ def generate_dataset(
     source_dataset_path = os.path.expandvars(os.path.expanduser(mg_config.experiment.source.dataset_path))
 
     # get environment metadata from dataset
-    env_meta = get_env_metadata_from_dataset(dataset_path=source_dataset_path)
+    env_meta = _get_source_env_metadata(
+        dataset_path=source_dataset_path,
+        env_name_override=mg_config.experiment.task.name,
+    )
     
     if robot_type == "Tiago":
         env_meta = configure_tiago_env_meta(env_meta)
@@ -315,7 +363,8 @@ def generate_dataset(
         render_offscreen=write_video,
         use_image_obs=use_image_obs,
         use_depth_obs=use_depth_obs,
-        manipulation_only=False,
+        init_curobo=True,
+        manipulation_only=manipulation_only,
         real_robot_mode=False,
         baseline=baseline,
     )
@@ -411,6 +460,8 @@ def generate_dataset(
     
     base_mp_failures, arm_mp_ik_failures, arm_mp_trajopt_failures, arm_mp_other_failures, base_sampling_failures, base_mp_ik_failures = 0, 0, 0, 0, 0, 0
     obj_visible_at_start_of_manip = 0
+    max_problematic = int(os.environ.get("MOMAGEN_MAX_PROBLEMATIC", "0") or 0)
+    max_attempts = int(os.environ.get("MOMAGEN_MAX_ATTEMPTS", "0") or 0)
 
     while True:
         print(f"======================= ATTEMPT {num_attempts} ========================")
@@ -462,8 +513,16 @@ def generate_dataset(
             print("")
             print("*" * 50)
             print("WARNING: got rollout exception {}".format(e))
+            traceback.print_exc()
             print("*" * 50)
             print("")
+            if video_writer is not None:
+                try:
+                    video_writer.close()
+                except Exception as close_e:
+                    print("WARNING: failed to close debug video writer after rollout exception: {}".format(close_e))
+            if os.environ.get("MOMAGEN_ABORT_ON_ROLLOUT_EXCEPTION") == "1":
+                raise
             
             episode_time_taken = time.time() - episode_start_time
             # save episode logs
@@ -475,6 +534,12 @@ def generate_dataset(
             all_episode_logs["phase_logs"].append(dict())
             
             num_problematic += 1
+            if max_problematic and num_problematic >= max_problematic:
+                raise RuntimeError(
+                    "Aborting after {} problematic rollout(s); set MOMAGEN_MAX_PROBLEMATIC=0 to retry indefinitely.".format(
+                        num_problematic
+                    )
+                ) from e
             continue
         
         num_attempts += 1
@@ -594,6 +659,14 @@ def generate_dataset(
         check_val = num_success if guarantee_success else num_attempts
         if check_val >= num_trials:
             break
+        if max_attempts and num_attempts >= max_attempts:
+            print(
+                "Stopping after {} attempt(s) because MOMAGEN_MAX_ATTEMPTS={} was set.".format(
+                    num_attempts,
+                    max_attempts,
+                )
+            )
+            break
 
 
     # save episode logs
@@ -689,7 +762,8 @@ def generate_dataset(
     MG_FileUtils.write_json(json_dic=final_important_stats, json_path=json_file_path)
 
 
-    if env_meta["type"] == EnvUtils.EB.EnvType.OG_TYPE:
+    env_type = env_meta.get("type")
+    if env_type == 4 or str(env_type).endswith("OG_TYPE"):
         og.shutdown()
 
     return final_important_stats
@@ -703,6 +777,9 @@ def main(args):
         # config generator from robomimic generates this part of config unused by MoMaGen
         if "meta" in ext_cfg:
             del ext_cfg["meta"]
+        # Newer robomimic ConfigGenerator writes experiment.logging, while MoMaGen's
+        # locked config schema does not consume it during dataset generation.
+        ext_cfg.get("experiment", {}).pop("logging", None)
     mg_config = config_factory(ext_cfg["name"], config_type=ext_cfg["type"])
 
     # update config with external json - this will throw errors if
@@ -739,7 +816,8 @@ def main(args):
             # shrink length of generation to test whether this run is likely to crash
             mg_config.experiment.source.n = 3
             mg_config.experiment.generation.guarantee = False
-            mg_config.experiment.generation.num_trials = 2
+            if args.num_demos is None:
+                mg_config.experiment.generation.num_trials = 2
 
             # send output to a temporary directory
             mg_config.experiment.generation.path = "/tmp/tmp_momagen"
@@ -760,6 +838,7 @@ def main(args):
             ds_ratio=args.ds_ratio,
             no_partial_tasks=args.no_partial_tasks,
             headless=args.headless,
+            manipulation_only=args.manipulation_only,
             baseline=args.baseline,
             robot_type=args.robot_type,
         )
@@ -873,6 +952,11 @@ if __name__ == "__main__":
         "--no_partial_tasks",
         action='store_true',
         help="disable the marker visualization when generating data, the markers are mainly for vis the eef pose and target pose",
+    )
+    parser.add_argument(
+        "--manipulation_only",
+        action='store_true',
+        help="skip navigation / reachability checks and execute manipulation trajectories directly",
     )
     parser.add_argument(
         "--baseline",

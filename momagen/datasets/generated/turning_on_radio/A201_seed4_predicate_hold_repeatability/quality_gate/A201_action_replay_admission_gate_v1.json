@@ -1,0 +1,153 @@
+{
+  "manifest_type": "momagen_action_replay_admission_gate_v1",
+  "created_at": "2026-06-20T18:07:38+08:00",
+  "candidate": "A201",
+  "dataset": "/tmp/momagen_turning_on_radio_round60/A201_seed4_predicate_hold_repeatability_seq/demo_src_r1_turning_on_radio_task_D0/demo.hdf5",
+  "inputs": {
+    "smoke": {
+      "output": "/tmp/momagen_turning_on_radio_round60/quality_scanner/A201_replay_smoke_0_5.json",
+      "summary": {
+        "num_records": 6,
+        "first_task_success_step": 0,
+        "first_toggle_value_step": null,
+        "first_can_toggle_step": null,
+        "first_primary_overlap_step": null,
+        "max_robot_can_toggle_steps": 0,
+        "best_left_finger_dist": {
+          "step": 0,
+          "object": "radio_89",
+          "dist": 1.8912847196612483,
+          "link": "robot_r1:left_gripper_finger_link2"
+        },
+        "state_error": {
+          "max_abs_max": 0.003321979194879532,
+          "mean_abs_max": 1.0084015871442351e-05,
+          "l2_max": 0.004903758599241373,
+          "shape_mismatch_steps": []
+        }
+      }
+    },
+    "long_window": {
+      "output": "/tmp/momagen_turning_on_radio_round60/quality_scanner/A201_replay_press_780_811_overlap_diag.json",
+      "summary": {
+        "num_records": 32,
+        "first_task_success_step": 780,
+        "first_toggle_value_step": 811,
+        "first_can_toggle_step": 807,
+        "first_primary_overlap_step": 807,
+        "max_robot_can_toggle_steps": 5,
+        "best_left_finger_dist": {
+          "step": 811,
+          "object": "radio_89",
+          "dist": 0.01427403846702593,
+          "link": "robot_r1:left_gripper_finger_link2"
+        },
+        "state_error": {
+          "max_abs_max": 1.0,
+          "mean_abs_max": 0.0012655452019534193,
+          "l2_max": 1.0474940460192246,
+          "shape_mismatch_steps": []
+        }
+      }
+    },
+    "near_checkpoint": {
+      "output": "/tmp/momagen_turning_on_radio_round60/quality_scanner/A201_replay_press_805_811_overlap_diag.json",
+      "summary": {
+        "num_records": 7,
+        "first_task_success_step": 805,
+        "first_toggle_value_step": 811,
+        "first_can_toggle_step": 807,
+        "first_primary_overlap_step": 807,
+        "max_robot_can_toggle_steps": 5,
+        "best_left_finger_dist": {
+          "step": 811,
+          "object": "radio_89",
+          "dist": 0.014016106915406702,
+          "link": "robot_r1:left_gripper_finger_link2"
+        },
+        "state_error": {
+          "max_abs_max": 1.0,
+          "mean_abs_max": 0.0011116496906186956,
+          "l2_max": 1.0241463412475997,
+          "shape_mismatch_steps": []
+        }
+      }
+    }
+  },
+  "gate_policy": {
+    "short_smoke_state_error_max_abs_threshold": 0.01,
+    "requires_long_window_5_step_hold": true,
+    "near_checkpoint_success_is_insufficient_without_long_window_success": true,
+    "relaxed_overlap_probe_radius_for_diagnostics": 0.03
+  },
+  "derived": {
+    "short_smoke_state_error_max_abs": 0.003321979194879532,
+    "long_window_class": "pass",
+    "near_checkpoint_class": "pass",
+    "checkpoint_sensitive": false,
+    "primary_to_relaxed_overlap_boundary_steps": {
+      "count": 1,
+      "first_step": 806,
+      "last_step": 806,
+      "steps": [
+        806
+      ],
+      "examples": [
+        {
+          "step": 806,
+          "object": "radio_89",
+          "marker_radius": 0.02235804684460163,
+          "relaxed_radius": 0.03,
+          "left_finger_dist": 0.05413615362106901,
+          "primary_num_hits": 2,
+          "relaxed_num_hits": 5,
+          "primary_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            }
+          ],
+          "relaxed_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "is_robot_finger": true
+            },
+            {
+              "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+              "is_robot_finger": true
+            },
+            {
+              "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "is_robot_finger": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "quality_verdict": {
+    "passes": [
+      "long_precontact_window_reproduces_5_step_hold",
+      "near_contact_checkpoint_reproduces_5_step_hold",
+      "short_smoke_state_consistent"
+    ],
+    "warnings": [
+      "initial_snapshot_task_success_likely_predicate_cache_artifact",
+      "primary_overlap_radius_boundary_sensitive"
+    ],
+    "blockers": [],
+    "admission_recommendation": "admit_candidate_after_human_review"
+  }
+}
