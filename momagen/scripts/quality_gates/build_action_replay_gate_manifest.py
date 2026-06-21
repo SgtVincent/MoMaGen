@@ -24,10 +24,29 @@ def load_json(path):
 
 def summary_of(path):
     data = load_json(path)
-    return {
+    out = {
         "output": path,
         "summary": data.get("summary", {}),
     }
+    for key in ("video_output", "obs_video_output", "obs_video_frames"):
+        if data.get(key) is not None:
+            out[key] = data[key]
+    return out
+
+
+def video_summary(path, frames=None, fps=None, resolution=None, layout=None):
+    if not path:
+        return None
+    out = {
+        "path": path,
+        "frames": frames,
+        "fps": fps,
+        "duration_seconds": round(frames / fps, 6) if frames and fps else None,
+        "resolution": resolution,
+    }
+    if layout:
+        out["layout"] = layout
+    return {k: v for k, v in out.items() if v is not None}
 
 
 def state_error_max(summary):
@@ -45,6 +64,60 @@ def classify_replay(summary):
     if (summary.get("max_robot_can_toggle_steps") or 0) > 0:
         return "partial"
     return "fail"
+
+
+def classify_obs_visibility(summary, args):
+    visibility = summary.get("observation_visibility") or {}
+    result = {
+        "passes": [],
+        "warnings": [],
+        "blockers": [],
+        "visibility": visibility,
+    }
+    if not visibility:
+        result["blockers"].append("observation_visibility_metrics_missing")
+        return result
+
+    head = visibility.get("head") or {}
+    head_marker_rate = head.get("marker_in_frame_rate")
+    head_object_fraction = head.get("mean_object_pixel_fraction")
+    if isinstance(head_marker_rate, (int, float)):
+        if head_marker_rate >= args.min_head_marker_rate:
+            result["passes"].append("head_camera_marker_visibility_above_threshold")
+        else:
+            frames = head.get("frames")
+            marker_frames = head.get("marker_in_frame_frames")
+            result["warnings"].append(
+                f"head_camera_marker_in_frame_only_{marker_frames}_of_{frames}_frames"
+            )
+            result["blockers"].append("head_camera_contact_marker_visibility_below_threshold")
+    else:
+        result["blockers"].append("head_camera_marker_visibility_missing")
+
+    if isinstance(head_object_fraction, (int, float)):
+        if head_object_fraction >= args.min_head_object_pixel_fraction:
+            result["passes"].append("head_camera_radio_pixel_fraction_above_threshold")
+        else:
+            result["warnings"].append(
+                f"head_camera_radio_pixel_fraction_{head_object_fraction:.6f}_below_threshold"
+            )
+            result["blockers"].append("head_camera_radio_pixel_fraction_below_threshold")
+    else:
+        result["blockers"].append("head_camera_radio_pixel_fraction_missing")
+
+    wrist_names = [name.strip() for name in args.wrist_cameras.split(",") if name.strip()]
+    wrist_ok = []
+    for name in wrist_names:
+        cam = visibility.get(name) or {}
+        marker_rate = cam.get("marker_in_frame_rate")
+        if isinstance(marker_rate, (int, float)) and marker_rate >= args.min_wrist_marker_rate:
+            wrist_ok.append(name)
+    if len(wrist_ok) >= args.min_good_wrist_cameras:
+        result["passes"].append("wrist_camera_marker_visibility_above_threshold")
+    else:
+        result["blockers"].append("insufficient_wrist_camera_marker_visibility")
+
+    return result
 
 
 def find_radius_boundary_steps(path, primary_radius=None, relaxed_radius=0.03, sample_hit_limit=6):
@@ -119,10 +192,14 @@ def build_manifest(args):
     smoke = summary_of(args.smoke)
     long_window = summary_of(args.long_window)
     near_checkpoint = summary_of(args.near_checkpoint) if args.near_checkpoint else None
+    obs_layout_long_window = summary_of(args.obs_layout_long_window) if args.obs_layout_long_window else None
+    obs_visibility_long_window = summary_of(args.obs_visibility_long_window) if args.obs_visibility_long_window else None
 
     smoke_summary = smoke["summary"]
     long_summary = long_window["summary"]
     near_summary = (near_checkpoint or {}).get("summary", {})
+    obs_layout_summary = (obs_layout_long_window or {}).get("summary", {})
+    obs_visibility_summary = (obs_visibility_long_window or {}).get("summary", {})
 
     passes = []
     warnings = []
@@ -155,6 +232,19 @@ def build_manifest(args):
     if near_class == "pass" and long_class != "pass":
         blockers.append("checkpoint_sensitive_replay_disagreement")
 
+    if obs_layout_long_window is not None:
+        if classify_replay(obs_layout_summary) == long_class:
+            passes.append("observation_layout_video_reproduces_long_window_metrics")
+        else:
+            blockers.append("observation_layout_video_replay_disagrees_with_long_window")
+
+    obs_visibility_result = None
+    if obs_visibility_long_window is not None:
+        obs_visibility_result = classify_obs_visibility(obs_visibility_summary, args)
+        passes.extend(obs_visibility_result["passes"])
+        warnings.extend(obs_visibility_result["warnings"])
+        blockers.extend(obs_visibility_result["blockers"])
+
     boundary_steps = find_radius_boundary_steps(
         args.long_window,
         relaxed_radius=args.relaxed_radius,
@@ -173,7 +263,15 @@ def build_manifest(args):
     if long_summary.get("first_task_success_step") == args.long_start:
         warnings.append("initial_snapshot_task_success_likely_predicate_cache_artifact")
 
-    admission = "do_not_admit_yet" if blockers else "admit_candidate_after_human_review"
+    if blockers:
+        admission = "do_not_admit_yet"
+        if obs_visibility_result is not None and any(
+            blocker.startswith("head_camera") or blocker.startswith("insufficient_wrist")
+            for blocker in obs_visibility_result["blockers"]
+        ):
+            admission = "keep_as_replay_gated_candidate_pending_observation_quality_review"
+    else:
+        admission = "admit_candidate_after_human_review"
 
     return {
         "manifest_type": "momagen_action_replay_admission_gate_v1",
@@ -184,18 +282,40 @@ def build_manifest(args):
             "smoke": smoke,
             "long_window": long_window,
             "near_checkpoint": near_checkpoint,
+            "obs_layout_long_window": obs_layout_long_window,
+            "obs_visibility_long_window": obs_visibility_long_window,
         },
         "gate_policy": {
             "short_smoke_state_error_max_abs_threshold": args.smoke_max_abs_threshold,
             "requires_long_window_5_step_hold": True,
             "near_checkpoint_success_is_insufficient_without_long_window_success": True,
             "relaxed_overlap_probe_radius_for_diagnostics": args.relaxed_radius,
+            "semantic_video_review_required_before_training_admission": True,
+            "observation_visibility_review_required_before_training_admission": args.obs_visibility_long_window is not None,
+            "min_head_marker_in_frame_rate": args.min_head_marker_rate,
+            "min_head_object_pixel_fraction": args.min_head_object_pixel_fraction,
+            "min_wrist_marker_in_frame_rate": args.min_wrist_marker_rate,
+            "min_good_wrist_cameras": args.min_good_wrist_cameras,
         },
         "derived": {
             "short_smoke_state_error_max_abs": smoke_err,
             "long_window_class": long_class,
             "near_checkpoint_class": near_class,
             "checkpoint_sensitive": bool(near_class == "pass" and long_class != "pass"),
+            "video": video_summary(
+                long_window.get("video_output"),
+                frames=long_summary.get("num_records"),
+                fps=args.video_fps,
+                resolution=args.video_resolution,
+            ),
+            "obs_layout_video": video_summary(
+                (obs_layout_long_window or {}).get("obs_video_output"),
+                frames=(obs_layout_long_window or {}).get("obs_video_frames") or obs_layout_summary.get("num_records"),
+                fps=args.obs_video_fps,
+                resolution=args.obs_video_resolution,
+                layout="left column: left wrist over right wrist at 224x224 each; right column: head camera at 448x448",
+            ),
+            "obs_visibility": (obs_visibility_result or {}).get("visibility"),
             "primary_to_relaxed_overlap_boundary_steps": boundary_summary,
         },
         "quality_verdict": {
@@ -214,18 +334,29 @@ def main():
     parser.add_argument("--smoke", required=True)
     parser.add_argument("--long-window", required=True)
     parser.add_argument("--near-checkpoint")
+    parser.add_argument("--obs-layout-long-window")
+    parser.add_argument("--obs-visibility-long-window")
     parser.add_argument("--long-start", type=int, default=None)
     parser.add_argument("--smoke-max-abs-threshold", type=float, default=0.01)
     parser.add_argument("--relaxed-radius", type=float, default=0.03)
     parser.add_argument("--boundary-hit-sample-limit", type=int, default=6)
     parser.add_argument("--boundary-edge-count", type=int, default=2)
+    parser.add_argument("--min-head-marker-rate", type=float, default=0.8)
+    parser.add_argument("--min-head-object-pixel-fraction", type=float, default=0.01)
+    parser.add_argument("--min-wrist-marker-rate", type=float, default=0.8)
+    parser.add_argument("--min-good-wrist-cameras", type=int, default=1)
+    parser.add_argument("--wrist-cameras", default="left_wrist,right_wrist")
+    parser.add_argument("--video-fps", type=int, default=12)
+    parser.add_argument("--obs-video-fps", type=int, default=12)
+    parser.add_argument("--video-resolution", default="1280x720")
+    parser.add_argument("--obs-video-resolution", default="672x448")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
     manifest = build_manifest(args)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    output.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(output)
     print(json.dumps(manifest["quality_verdict"], indent=2))
 

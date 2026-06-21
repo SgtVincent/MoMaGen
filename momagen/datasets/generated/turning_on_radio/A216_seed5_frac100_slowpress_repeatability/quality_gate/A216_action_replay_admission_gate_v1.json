@@ -1,6 +1,6 @@
 {
   "manifest_type": "momagen_action_replay_admission_gate_v1",
-  "created_at": "2026-06-21T05:25:02+08:00",
+  "created_at": "2026-06-21T21:49:07+08:00",
   "candidate": "A216",
   "dataset": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/demo_src_r1_turning_on_radio_task_D0/demo.hdf5",
   "inputs": {
@@ -29,7 +29,6 @@
     },
     "long_window": {
       "output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805_video_diag.json",
-      "video_output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805.mp4",
       "summary": {
         "num_records": 46,
         "first_task_success_step": 760,
@@ -49,7 +48,8 @@
           "l2_max": 1.5815588230778745,
           "shape_mismatch_steps": []
         }
-      }
+      },
+      "video_output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805.mp4"
     },
     "near_checkpoint": {
       "output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_780_805_checkpoint_diag.json",
@@ -76,7 +76,6 @@
     },
     "obs_layout_long_window": {
       "output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805_obs_layout_diag.json",
-      "obs_video_output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805_obs_layout.mp4",
       "summary": {
         "num_records": 46,
         "first_task_success_step": 760,
@@ -96,7 +95,9 @@
           "l2_max": 1.5815588230778745,
           "shape_mismatch_steps": []
         }
-      }
+      },
+      "obs_video_output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805_obs_layout.mp4",
+      "obs_video_frames": 46
     },
     "obs_visibility_long_window": {
       "output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805_obs_visibility_diag.json",
@@ -157,15 +158,21 @@
             "mean_object_pixel_fraction": 0.001373954441236413
           }
         }
-      }
+      },
+      "obs_video_frames": 0
     }
   },
   "gate_policy": {
     "short_smoke_state_error_max_abs_threshold": 0.01,
     "requires_long_window_5_step_hold": true,
     "near_checkpoint_success_is_insufficient_without_long_window_success": true,
+    "relaxed_overlap_probe_radius_for_diagnostics": 0.03,
     "semantic_video_review_required_before_training_admission": true,
-    "observation_visibility_review_required_before_training_admission": true
+    "observation_visibility_review_required_before_training_admission": true,
+    "min_head_marker_in_frame_rate": 0.8,
+    "min_head_object_pixel_fraction": 0.01,
+    "min_wrist_marker_in_frame_rate": 0.8,
+    "min_good_wrist_cameras": 1
   },
   "derived": {
     "short_smoke_state_error_max_abs": 0.00703144446015358,
@@ -224,24 +231,182 @@
         "marker_with_object_visible_rate": 0.021739130434782608,
         "mean_object_pixel_fraction": 0.001373954441236413
       }
+    },
+    "primary_to_relaxed_overlap_boundary_steps": {
+      "count": 7,
+      "first_step": 781,
+      "last_step": 800,
+      "steps": [
+        781,
+        782,
+        783,
+        788,
+        789,
+        799,
+        800
+      ],
+      "examples": [
+        {
+          "step": 781,
+          "object": "radio_89",
+          "marker_radius": 0.02235804684460163,
+          "relaxed_radius": 0.03,
+          "left_finger_dist": 0.03553356389344853,
+          "primary_num_hits": 2,
+          "relaxed_num_hits": 3,
+          "primary_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            }
+          ],
+          "relaxed_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+              "is_robot_finger": true
+            }
+          ]
+        },
+        {
+          "step": 782,
+          "object": "radio_89",
+          "marker_radius": 0.02235804684460163,
+          "relaxed_radius": 0.03,
+          "left_finger_dist": 0.037433756236124466,
+          "primary_num_hits": 2,
+          "relaxed_num_hits": 3,
+          "primary_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            }
+          ],
+          "relaxed_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+              "is_robot_finger": true
+            }
+          ]
+        },
+        {
+          "step": 799,
+          "object": "radio_89",
+          "marker_radius": 0.02235804684460163,
+          "relaxed_radius": 0.03,
+          "left_finger_dist": 0.04112822164893212,
+          "primary_num_hits": 2,
+          "relaxed_num_hits": 3,
+          "primary_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            }
+          ],
+          "relaxed_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+              "is_robot_finger": true
+            }
+          ]
+        },
+        {
+          "step": 800,
+          "object": "radio_89",
+          "marker_radius": 0.02235804684460163,
+          "relaxed_radius": 0.03,
+          "left_finger_dist": 0.037284584719394165,
+          "primary_num_hits": 2,
+          "relaxed_num_hits": 5,
+          "primary_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            }
+          ],
+          "relaxed_hits_sample": [
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/radio_89/base_link",
+              "is_robot_finger": false
+            },
+            {
+              "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+              "is_robot_finger": true
+            },
+            {
+              "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link2",
+              "is_robot_finger": true
+            },
+            {
+              "rigid_body": "/World/scene_0/controllable__r1pro__robot_r1/left_gripper_finger_link1",
+              "is_robot_finger": true
+            }
+          ]
+        }
+      ]
     }
   },
   "quality_verdict": {
     "passes": [
-      "short_smoke_state_consistent",
       "long_precontact_window_reproduces_5_step_hold",
       "near_contact_checkpoint_reproduces_5_step_hold",
       "observation_layout_video_reproduces_long_window_metrics",
-      "observation_visibility_metrics_recorded"
+      "short_smoke_state_consistent",
+      "wrist_camera_marker_visibility_above_threshold"
     ],
     "warnings": [
+      "head_camera_marker_in_frame_only_1_of_46_frames",
+      "head_camera_radio_pixel_fraction_0.001374_below_threshold",
       "initial_snapshot_task_success_likely_predicate_cache_artifact",
-      "standard_generation_stats_report_partial_demo_true_and_requires_replay_plus_semantic_review_before_training_admission",
-      "semantic_review_should_check_third_view_and_observation_layout_videos_before_training_admission",
-      "head_camera_sees_radio_but_switch_marker_is_in_frame_for_only_1_of_46_press_window_frames",
-      "a216_should_remain_replay_gated_candidate_not_training_admitted_until_camera_framing_is_improved_or_human_accepts_observation_quality"
+      "primary_overlap_radius_boundary_sensitive"
     ],
-    "blockers": [],
+    "blockers": [
+      "head_camera_contact_marker_visibility_below_threshold",
+      "head_camera_radio_pixel_fraction_below_threshold"
+    ],
     "admission_recommendation": "keep_as_replay_gated_candidate_pending_observation_quality_review"
   }
 }
