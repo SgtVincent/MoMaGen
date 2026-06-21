@@ -97,13 +97,75 @@
           "shape_mismatch_steps": []
         }
       }
+    },
+    "obs_visibility_long_window": {
+      "output": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_replay_press_760_805_obs_visibility_diag.json",
+      "summary": {
+        "num_records": 46,
+        "first_task_success_step": 760,
+        "first_toggle_value_step": 805,
+        "first_can_toggle_step": 780,
+        "first_primary_overlap_step": 780,
+        "max_robot_can_toggle_steps": 5,
+        "best_left_finger_dist": {
+          "step": 805,
+          "object": "radio_89",
+          "dist": 0.02203195136511964,
+          "link": "robot_r1:left_gripper_finger_link1"
+        },
+        "state_error": {
+          "max_abs_max": 1.0418761372566223,
+          "mean_abs_max": 0.0032474199269272295,
+          "l2_max": 1.5815588230778745,
+          "shape_mismatch_steps": []
+        },
+        "observation_visibility": {
+          "left_wrist": {
+            "frames": 46,
+            "object_visible_frames": 38,
+            "marker_in_frame_frames": 29,
+            "marker_with_object_visible_frames": 29,
+            "max_object_pixel_fraction": 0.4024200439453125,
+            "max_object_bbox_area_fraction": 0.51953125,
+            "object_visible_rate": 0.8260869565217391,
+            "marker_in_frame_rate": 0.6304347826086957,
+            "marker_with_object_visible_rate": 0.6304347826086957,
+            "mean_object_pixel_fraction": 0.250130031419837
+          },
+          "right_wrist": {
+            "frames": 46,
+            "object_visible_frames": 45,
+            "marker_in_frame_frames": 45,
+            "marker_with_object_visible_frames": 45,
+            "max_object_pixel_fraction": 0.6007537841796875,
+            "max_object_bbox_area_fraction": 0.83984375,
+            "object_visible_rate": 0.9782608695652174,
+            "marker_in_frame_rate": 0.9782608695652174,
+            "marker_with_object_visible_rate": 0.9782608695652174,
+            "mean_object_pixel_fraction": 0.5865680860436481
+          },
+          "head": {
+            "frames": 46,
+            "object_visible_frames": 46,
+            "marker_in_frame_frames": 1,
+            "marker_with_object_visible_frames": 1,
+            "max_object_pixel_fraction": 0.0079498291015625,
+            "max_object_bbox_area_fraction": 0.01348876953125,
+            "object_visible_rate": 1.0,
+            "marker_in_frame_rate": 0.021739130434782608,
+            "marker_with_object_visible_rate": 0.021739130434782608,
+            "mean_object_pixel_fraction": 0.001373954441236413
+          }
+        }
+      }
     }
   },
   "gate_policy": {
     "short_smoke_state_error_max_abs_threshold": 0.01,
     "requires_long_window_5_step_hold": true,
     "near_checkpoint_success_is_insufficient_without_long_window_success": true,
-    "semantic_video_review_required_before_training_admission": true
+    "semantic_video_review_required_before_training_admission": true,
+    "observation_visibility_review_required_before_training_admission": true
   },
   "derived": {
     "short_smoke_state_error_max_abs": 0.00703144446015358,
@@ -124,6 +186,44 @@
       "duration_seconds": 3.833333,
       "resolution": "672x448",
       "layout": "left column: left wrist over right wrist at 224x224 each; right column: head camera at 448x448"
+    },
+    "obs_visibility": {
+      "left_wrist": {
+        "frames": 46,
+        "object_visible_frames": 38,
+        "marker_in_frame_frames": 29,
+        "marker_with_object_visible_frames": 29,
+        "max_object_pixel_fraction": 0.4024200439453125,
+        "max_object_bbox_area_fraction": 0.51953125,
+        "object_visible_rate": 0.8260869565217391,
+        "marker_in_frame_rate": 0.6304347826086957,
+        "marker_with_object_visible_rate": 0.6304347826086957,
+        "mean_object_pixel_fraction": 0.250130031419837
+      },
+      "right_wrist": {
+        "frames": 46,
+        "object_visible_frames": 45,
+        "marker_in_frame_frames": 45,
+        "marker_with_object_visible_frames": 45,
+        "max_object_pixel_fraction": 0.6007537841796875,
+        "max_object_bbox_area_fraction": 0.83984375,
+        "object_visible_rate": 0.9782608695652174,
+        "marker_in_frame_rate": 0.9782608695652174,
+        "marker_with_object_visible_rate": 0.9782608695652174,
+        "mean_object_pixel_fraction": 0.5865680860436481
+      },
+      "head": {
+        "frames": 46,
+        "object_visible_frames": 46,
+        "marker_in_frame_frames": 1,
+        "marker_with_object_visible_frames": 1,
+        "max_object_pixel_fraction": 0.0079498291015625,
+        "max_object_bbox_area_fraction": 0.01348876953125,
+        "object_visible_rate": 1.0,
+        "marker_in_frame_rate": 0.021739130434782608,
+        "marker_with_object_visible_rate": 0.021739130434782608,
+        "mean_object_pixel_fraction": 0.001373954441236413
+      }
     }
   },
   "quality_verdict": {
@@ -131,14 +231,17 @@
       "short_smoke_state_consistent",
       "long_precontact_window_reproduces_5_step_hold",
       "near_contact_checkpoint_reproduces_5_step_hold",
-      "observation_layout_video_reproduces_long_window_metrics"
+      "observation_layout_video_reproduces_long_window_metrics",
+      "observation_visibility_metrics_recorded"
     ],
     "warnings": [
       "initial_snapshot_task_success_likely_predicate_cache_artifact",
       "standard_generation_stats_report_partial_demo_true_and_requires_replay_plus_semantic_review_before_training_admission",
-      "semantic_review_should_check_third_view_and_observation_layout_videos_before_training_admission"
+      "semantic_review_should_check_third_view_and_observation_layout_videos_before_training_admission",
+      "head_camera_sees_radio_but_switch_marker_is_in_frame_for_only_1_of_46_press_window_frames",
+      "a216_should_remain_replay_gated_candidate_not_training_admitted_until_camera_framing_is_improved_or_human_accepts_observation_quality"
     ],
     "blockers": [],
-    "admission_recommendation": "admit_candidate_after_human_review"
+    "admission_recommendation": "keep_as_replay_gated_candidate_pending_observation_quality_review"
   }
 }

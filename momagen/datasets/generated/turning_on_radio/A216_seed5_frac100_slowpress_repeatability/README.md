@@ -8,7 +8,8 @@ This folder contains a replay-gated MoMaGen candidate for the BEHAVIOR-1K
 - Candidate: `A216_seed5_frac100_slowpress_repeatability`
 - Standard generation result: `success_rate=100.0`, `num_success=1`,
   `ep_lengths=[805]`
-- Replay gate verdict: `admit_candidate_after_human_review`
+- Replay gate verdict:
+  `keep_as_replay_gated_candidate_pending_observation_quality_review`
 - Human semantic review: pending. The third-view replay video covers the
   `760..805` press / contact window and reproduces the switch toggle. The
   observation-layout replay video shows the policy-observation cameras for the
@@ -18,6 +19,11 @@ This folder contains a replay-gated MoMaGen candidate for the BEHAVIOR-1K
   initial replay snapshot reports task success before the physical toggle
   value changes. Treat this as a replay-gated candidate requiring semantic
   review, not as an automatically admitted training sample.
+- Observation-quality caveat: the head camera sees the radio in every replayed
+  frame, but the switch/contact marker is in the head-camera frame for only
+  1/46 frames in the `760..805` press window. This candidate is useful as a
+  replay-gated success case, but should not be admitted for training until the
+  camera framing is accepted by human review or improved in a follow-up run.
 
 ## Replay gate evidence
 
@@ -40,6 +46,10 @@ The action replay admission gate checks three windows:
   `first_toggle_value_step=805`, and `max_robot_can_toggle_steps=5`
 - `A216_replay_press_760_805_obs_layout.mp4`: 672x448 H.264 observation-layout
   replay video, 46 frames at 12 FPS
+- `A216_replay_press_760_805_obs_visibility_diag.json`: per-camera observation
+  visibility gate for the same `760..805` window. Radio visibility / switch
+  marker in-frame rates are: left wrist `38/46` and `29/46`, right wrist
+  `45/46` and `45/46`, head `46/46` and `1/46`.
 
 The admission gate summary is in
 `quality_gate/A216_action_replay_admission_gate_v1.json`.
@@ -57,3 +67,5 @@ The admission gate summary is in
   review
 - `quality_gate/A216_replay_press_760_805_obs_layout.mp4`: observation-camera
   replay video for semantic review from the generated episode inputs
+- `quality_gate/A216_replay_press_760_805_obs_visibility_diag.json`:
+  observation-quality metrics for admission review

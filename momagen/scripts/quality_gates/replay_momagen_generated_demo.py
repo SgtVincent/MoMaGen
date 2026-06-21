@@ -28,6 +28,12 @@ R1PRO_OBS_CAMERA_KEYS = {
     "head": "robot_r1::robot_r1:zed_link:Camera:0::rgb",
 }
 
+R1PRO_OBS_CAMERA_SENSOR_NAMES = {
+    "left_wrist": "robot_r1:left_realsense_link:Camera:0",
+    "right_wrist": "robot_r1:right_realsense_link:Camera:0",
+    "head": "robot_r1:zed_link:Camera:0",
+}
+
 
 def _to_list(x):
     if x is None: return None
@@ -149,7 +155,17 @@ def _snapshot(env, step, ref_state=None, target_objects=None):
 
 
 def summarize(records):
-    summary={'num_records': len(records), 'first_task_success_step': None, 'first_toggle_value_step': None, 'first_can_toggle_step': None, 'first_primary_overlap_step': None, 'max_robot_can_toggle_steps': 0, 'best_left_finger_dist': None, 'state_error': {'max_abs_max': None, 'mean_abs_max': None, 'l2_max': None, 'shape_mismatch_steps': []}}
+    summary={
+        'num_records': len(records),
+        'first_task_success_step': None,
+        'first_toggle_value_step': None,
+        'first_can_toggle_step': None,
+        'first_primary_overlap_step': None,
+        'max_robot_can_toggle_steps': 0,
+        'best_left_finger_dist': None,
+        'state_error': {'max_abs_max': None, 'mean_abs_max': None, 'l2_max': None, 'shape_mismatch_steps': []},
+        'observation_visibility': {},
+    }
     best=float('inf')
     for r in records:
         step=r['step']
@@ -176,6 +192,40 @@ def summarize(records):
             left=(row.get('finger_min_dist_to_marker') or {}).get('left')
             if isinstance(left,dict) and isinstance(left.get('dist'),(int,float)) and left['dist']<best:
                 best=left['dist']; summary['best_left_finger_dist']={'step':step,'object':obj,'dist':left['dist'],'link':left.get('link')}
+            for cam_name, vis in (row.get('observation_visibility') or {}).items():
+                cam_summary = summary['observation_visibility'].setdefault(
+                    cam_name,
+                    {
+                        'frames': 0,
+                        'object_visible_frames': 0,
+                        'marker_in_frame_frames': 0,
+                        'marker_with_object_visible_frames': 0,
+                        'max_object_pixel_fraction': 0.0,
+                        'max_object_bbox_area_fraction': 0.0,
+                        'object_pixel_fraction_sum': 0.0,
+                    },
+                )
+                cam_summary['frames'] += 1
+                if vis.get('object_visible'):
+                    cam_summary['object_visible_frames'] += 1
+                if vis.get('marker_projection', {}).get('in_frame'):
+                    cam_summary['marker_in_frame_frames'] += 1
+                if vis.get('object_visible') and vis.get('marker_projection', {}).get('in_frame'):
+                    cam_summary['marker_with_object_visible_frames'] += 1
+                pix_frac = vis.get('object_pixel_fraction')
+                if isinstance(pix_frac, (int, float)):
+                    cam_summary['object_pixel_fraction_sum'] += float(pix_frac)
+                    cam_summary['max_object_pixel_fraction'] = max(cam_summary['max_object_pixel_fraction'], float(pix_frac))
+                bbox_frac = vis.get('object_bbox_area_fraction')
+                if isinstance(bbox_frac, (int, float)):
+                    cam_summary['max_object_bbox_area_fraction'] = max(cam_summary['max_object_bbox_area_fraction'], float(bbox_frac))
+    for cam_summary in summary['observation_visibility'].values():
+        frames = max(1, cam_summary['frames'])
+        cam_summary['object_visible_rate'] = cam_summary['object_visible_frames'] / frames
+        cam_summary['marker_in_frame_rate'] = cam_summary['marker_in_frame_frames'] / frames
+        cam_summary['marker_with_object_visible_rate'] = cam_summary['marker_with_object_visible_frames'] / frames
+        cam_summary['mean_object_pixel_fraction'] = cam_summary['object_pixel_fraction_sum'] / frames
+        del cam_summary['object_pixel_fraction_sum']
     return summary
 
 
@@ -272,6 +322,156 @@ def _find_obs_key(obs, key):
     return None
 
 
+def _ensure_camera_modalities(env, include_visibility=False):
+    modalities = ["rgb"]
+    if include_visibility:
+        modalities.extend(["seg_instance", "seg_semantic"])
+    og_env = getattr(env, "env", env)
+    robot = og_env.robots[0] if getattr(og_env, "robots", None) else None
+    if robot is None:
+        return
+    for sensor_name, sensor in getattr(robot, "sensors", {}).items():
+        if "Camera" not in sensor_name:
+            continue
+        for modality in modalities:
+            if hasattr(sensor, "add_modality") and modality not in getattr(sensor, "modalities", set()):
+                sensor.add_modality(modality)
+
+
+def _get_obs(env):
+    for _ in range(3):
+        og.sim.render()
+    return env.get_observation()
+
+
+def _to_numpy_array(x):
+    if x is None:
+        return None
+    if hasattr(x, "detach"):
+        x = x.detach()
+    if hasattr(x, "cpu"):
+        x = x.cpu()
+    if hasattr(x, "numpy"):
+        x = x.numpy()
+    return np.asarray(x)
+
+
+def _to_plain_scalar(x):
+    if isinstance(x, (np.generic,)):
+        return x.item()
+    return x
+
+
+def _find_seg_key_for_object(seg_info, object_name):
+    if not isinstance(seg_info, dict):
+        return None
+    for key, value in seg_info.items():
+        if value == object_name or str(value) == object_name:
+            return _to_plain_scalar(key)
+    for key, value in seg_info.items():
+        if object_name in str(value):
+            return _to_plain_scalar(key)
+    return None
+
+
+def _bbox_from_mask(mask):
+    ys, xs = np.where(mask)
+    if len(xs) == 0:
+        return None
+    return {
+        "x_min": int(xs.min()),
+        "y_min": int(ys.min()),
+        "x_max": int(xs.max()),
+        "y_max": int(ys.max()),
+        "width": int(xs.max() - xs.min() + 1),
+        "height": int(ys.max() - ys.min() + 1),
+    }
+
+
+def _project_world_point_to_camera(point_world, sensor):
+    try:
+        sensor_pos, sensor_quat = sensor.get_position_orientation()
+        camera_mat = T.pose2mat((sensor_pos, sensor_quat))
+        target_h = th.ones(4, dtype=th.float32)
+        target_h[:3] = th.as_tensor(point_world, dtype=th.float32)
+        target_cam = th.linalg.inv(camera_mat).to(dtype=th.float32) @ target_h
+        target_cam = th.stack([target_cam[0], target_cam[1], -target_cam[2], target_cam[3]])
+        z = float(target_cam[2].item())
+        if z <= 1e-4:
+            return {"in_front": False, "in_frame": False, "reason": "behind_camera"}
+        focal_length = float(getattr(sensor, "focal_length", 17.0) or 17.0)
+        horizontal_aperture = float(getattr(sensor, "horizontal_aperture", 20.995) or 20.995)
+        image_width = int(getattr(sensor, "image_width", 1) or 1)
+        image_height = int(getattr(sensor, "image_height", 1) or 1)
+        fx = focal_length * image_width / horizontal_aperture
+        fy = fx
+        cx = image_width / 2.0
+        cy = image_height / 2.0
+        u = fx * float(target_cam[0].item()) / z + cx
+        v = fy * float(target_cam[1].item()) / z + cy
+        return {
+            "in_front": True,
+            "in_frame": bool(0 <= u < image_width and 0 <= v < image_height),
+            "pixel": [float(u), float(v)],
+            "depth": z,
+            "image_width": image_width,
+            "image_height": image_height,
+        }
+    except Exception as e:
+        return {"in_front": False, "in_frame": False, "error": f"{type(e).__name__}: {e}"}
+
+
+def _obs_visibility_for_object(env, obs, obs_info, object_name, marker_pos=None):
+    og_env = getattr(env, "env", env)
+    robot = og_env.robots[0] if getattr(og_env, "robots", None) else None
+    robot_name = getattr(robot, "name", "robot_r1") if robot is not None else "robot_r1"
+    out = {}
+    for cam_name, sensor_name in R1PRO_OBS_CAMERA_SENSOR_NAMES.items():
+        seg_key = f"{robot_name}::{sensor_name}::seg_instance"
+        rgb_key = f"{robot_name}::{sensor_name}::rgb"
+        seg = _to_numpy_array(obs.get(seg_key))
+        rgb = _to_numpy_array(obs.get(rgb_key))
+        sensor_info = (((obs_info or {}).get(robot_name) or {}).get(sensor_name) or {})
+        obj_seg_key = _find_seg_key_for_object(sensor_info.get("seg_instance"), object_name)
+        row = {
+            "seg_key": seg_key,
+            "rgb_key": rgb_key,
+            "object_segmentation_key": obj_seg_key,
+            "object_visible": False,
+            "object_pixel_count": 0,
+            "object_pixel_fraction": 0.0,
+            "object_bbox": None,
+            "object_bbox_area_fraction": 0.0,
+        }
+        if seg is None:
+            row["error"] = "seg_instance_missing"
+        elif obj_seg_key is None:
+            row["error"] = "object_not_in_seg_instance_info"
+        else:
+            mask = seg == obj_seg_key
+            pixel_count = int(mask.sum())
+            total = int(mask.size)
+            bbox = _bbox_from_mask(mask)
+            row.update({
+                "object_visible": pixel_count > 0,
+                "object_pixel_count": pixel_count,
+                "object_pixel_fraction": (pixel_count / total) if total else 0.0,
+                "object_bbox": bbox,
+            })
+            if bbox is not None and total:
+                row["object_bbox_area_fraction"] = (bbox["width"] * bbox["height"]) / total
+        if rgb is not None:
+            row["rgb_shape"] = list(rgb.shape)
+        if marker_pos is not None and robot is not None:
+            sensor = getattr(robot, "sensors", {}).get(sensor_name)
+            row["marker_projection"] = (
+                _project_world_point_to_camera(marker_pos, sensor)
+                if sensor is not None else {"in_front": False, "in_frame": False, "error": "sensor_missing"}
+            )
+        out[cam_name] = row
+    return out
+
+
 def _capture_obs_layout_frame(env):
     """Capture the model-observation camera layout used for semantic review.
 
@@ -279,9 +479,7 @@ def _capture_obs_layout_frame(env):
       - left column: left wrist over right wrist, each 224x224
       - right column: head camera, 448x448
     """
-    for _ in range(3):
-        og.sim.render()
-    obs, _ = env.get_observation()
+    obs, _ = _get_obs(env)
     missing = []
     frames = {}
     for name, key in R1PRO_OBS_CAMERA_KEYS.items():
@@ -319,6 +517,7 @@ def main():
     ap.add_argument('--obs-video-output', default=None, help='Optional MP4 path for observation-camera layout replay video.')
     ap.add_argument('--obs-video-every', type=int, default=None, help='Append one observation-layout frame every N replay steps. Defaults to --video-every.')
     ap.add_argument('--obs-video-fps', type=int, default=None, help='Observation-layout video FPS. Defaults to --video-fps.')
+    ap.add_argument('--obs-visibility', action='store_true', help='Record per-camera object segmentation and marker projection visibility metrics.')
     args=ap.parse_args()
     status_path=f"{args.output}.status.json"
     status={'dataset':args.dataset,'output':args.output,'stage':'starting'}
@@ -339,6 +538,7 @@ def main():
     status.update({'stage':'creating_env','total_actions':int(total),'start':int(args.start),'end':int(end)})
     write_payload(status_path,status)
     env=RobomimicUtils.create_env(env_meta, init_curobo=args.init_curobo)
+    _ensure_camera_modalities(env, include_visibility=args.obs_visibility)
     status['stage']='env_created'
     write_payload(status_path,status)
     records=[]
@@ -372,14 +572,36 @@ def main():
             status.update({'stage':'replaying','current_step':int(i),'num_records':len(records)})
             write_payload(status_path,status)
             if i == args.start or ((i-args.start) % max(1,args.snapshot_every)==0):
-                records.append(_snapshot(env, i, ref_state=states[i], target_objects=target_objects))
+                record = _snapshot(env, i, ref_state=states[i], target_objects=target_objects)
+                if args.obs_visibility:
+                    obs, obs_info = _get_obs(env)
+                    for obj_name, row in record.get("objects", {}).items():
+                        row["observation_visibility"] = _obs_visibility_for_object(
+                            env,
+                            obs,
+                            obs_info,
+                            obj_name,
+                            marker_pos=row.get("marker_pos"),
+                        )
+                records.append(record)
             env.step(actions[i])
             if video_writer is not None and ((i - args.start + 1) % max(1,args.video_every)==0):
                 video_writer.append_data(_capture_frame(env, target_objects=target_objects))
             if obs_video_writer is not None and ((i - args.start + 1) % obs_video_every==0):
                 obs_video_writer.append_data(_capture_obs_layout_frame(env))
                 obs_video_frames += 1
-        records.append(_snapshot(env, end, ref_state=states[end] if end < len(states) else None, target_objects=target_objects))
+        record = _snapshot(env, end, ref_state=states[end] if end < len(states) else None, target_objects=target_objects)
+        if args.obs_visibility:
+            obs, obs_info = _get_obs(env)
+            for obj_name, row in record.get("objects", {}).items():
+                row["observation_visibility"] = _obs_visibility_for_object(
+                    env,
+                    obs,
+                    obs_info,
+                    obj_name,
+                    marker_pos=row.get("marker_pos"),
+                )
+        records.append(record)
         if video_writer is not None:
             video_writer.close()
             video_writer=None
