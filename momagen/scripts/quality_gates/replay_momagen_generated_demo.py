@@ -10,6 +10,7 @@ from pathlib import Path
 from copy import deepcopy
 
 import h5py
+import cv2
 import imageio.v2 as imageio
 import numpy as np
 import torch as th
@@ -20,6 +21,12 @@ from omnigibson.object_states import ToggledOn
 import omnigibson.utils.transform_utils as T
 
 import momagen.utils.robomimic_utils as RobomimicUtils
+
+R1PRO_OBS_CAMERA_KEYS = {
+    "left_wrist": "robot_r1::robot_r1:left_realsense_link:Camera:0::rgb",
+    "right_wrist": "robot_r1::robot_r1:right_realsense_link:Camera:0::rgb",
+    "head": "robot_r1::robot_r1:zed_link:Camera:0::rgb",
+}
 
 
 def _to_list(x):
@@ -233,6 +240,69 @@ def _capture_frame(env, target_objects=None):
     return frame[..., :3]
 
 
+def _to_numpy_rgb(x):
+    if x is None:
+        return None
+    if hasattr(x, "detach"):
+        x = x.detach()
+    if hasattr(x, "cpu"):
+        x = x.cpu()
+    if hasattr(x, "numpy"):
+        x = x.numpy()
+    frame = np.asarray(x)
+    if frame.ndim < 3:
+        return None
+    frame = frame[..., :3]
+    if frame.dtype != np.uint8:
+        if np.issubdtype(frame.dtype, np.floating):
+            scale = 255.0 if float(frame.max(initial=0.0)) <= 1.5 else 1.0
+            frame = np.clip(frame * scale, 0.0, 255.0).astype(np.uint8)
+        else:
+            frame = np.clip(frame, 0, 255).astype(np.uint8)
+    return frame
+
+
+def _find_obs_key(obs, key):
+    if key in obs:
+        return key
+    suffix = f"{key.split('::')[0]}::rgb"
+    for candidate in obs:
+        if candidate.endswith(suffix):
+            return candidate
+    return None
+
+
+def _capture_obs_layout_frame(env):
+    """Capture the model-observation camera layout used for semantic review.
+
+    Layout:
+      - left column: left wrist over right wrist, each 224x224
+      - right column: head camera, 448x448
+    """
+    for _ in range(3):
+        og.sim.render()
+    obs, _ = env.get_observation()
+    missing = []
+    frames = {}
+    for name, key in R1PRO_OBS_CAMERA_KEYS.items():
+        obs_key = _find_obs_key(obs, key)
+        frame = _to_numpy_rgb(obs.get(obs_key) if obs_key is not None else None)
+        if frame is None:
+            missing.append(key)
+        else:
+            frames[name] = frame
+    if missing:
+        available_rgb = sorted(str(k) for k in obs.keys() if "rgb" in str(k).lower())
+        raise RuntimeError(
+            "Cannot build obs layout video; missing camera observations "
+            f"{missing}. Available rgb keys: {available_rgb[:20]}"
+        )
+    left = cv2.resize(frames["left_wrist"], (224, 224), interpolation=cv2.INTER_AREA)
+    right = cv2.resize(frames["right_wrist"], (224, 224), interpolation=cv2.INTER_AREA)
+    head = cv2.resize(frames["head"], (448, 448), interpolation=cv2.INTER_AREA)
+    return np.hstack([np.vstack([left, right]), head]).copy()
+
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--dataset', required=True)
@@ -246,6 +316,9 @@ def main():
     ap.add_argument('--video-output', default=None, help='Optional MP4 path for rendered replay video.')
     ap.add_argument('--video-every', type=int, default=1, help='Append one video frame every N replay steps.')
     ap.add_argument('--video-fps', type=int, default=20)
+    ap.add_argument('--obs-video-output', default=None, help='Optional MP4 path for observation-camera layout replay video.')
+    ap.add_argument('--obs-video-every', type=int, default=None, help='Append one observation-layout frame every N replay steps. Defaults to --video-every.')
+    ap.add_argument('--obs-video-fps', type=int, default=None, help='Observation-layout video FPS. Defaults to --video-fps.')
     args=ap.parse_args()
     status_path=f"{args.output}.status.json"
     status={'dataset':args.dataset,'output':args.output,'stage':'starting'}
@@ -270,6 +343,10 @@ def main():
     write_payload(status_path,status)
     records=[]
     video_writer=None
+    obs_video_writer=None
+    obs_video_frames=0
+    obs_video_every=max(1, args.obs_video_every if args.obs_video_every is not None else args.video_every)
+    obs_video_fps=args.obs_video_fps if args.obs_video_fps is not None else args.video_fps
     try:
         # Reset then restore exact generated initial state.
         if args.call_wrapper_reset:
@@ -286,6 +363,11 @@ def main():
             for _ in range(3):
                 og.sim.render()
             video_writer.append_data(_capture_frame(env, target_objects=target_objects))
+        if args.obs_video_output:
+            Path(args.obs_video_output).parent.mkdir(parents=True, exist_ok=True)
+            obs_video_writer=imageio.get_writer(args.obs_video_output, fps=obs_video_fps)
+            obs_video_writer.append_data(_capture_obs_layout_frame(env))
+            obs_video_frames += 1
         for i in range(args.start, end):
             status.update({'stage':'replaying','current_step':int(i),'num_records':len(records)})
             write_payload(status_path,status)
@@ -294,11 +376,26 @@ def main():
             env.step(actions[i])
             if video_writer is not None and ((i - args.start + 1) % max(1,args.video_every)==0):
                 video_writer.append_data(_capture_frame(env, target_objects=target_objects))
+            if obs_video_writer is not None and ((i - args.start + 1) % obs_video_every==0):
+                obs_video_writer.append_data(_capture_obs_layout_frame(env))
+                obs_video_frames += 1
         records.append(_snapshot(env, end, ref_state=states[end] if end < len(states) else None, target_objects=target_objects))
         if video_writer is not None:
             video_writer.close()
             video_writer=None
-        payload={'dataset':args.dataset,'start':args.start,'end':end,'video_output':args.video_output,'summary':summarize(records),'records':records}
+        if obs_video_writer is not None:
+            obs_video_writer.close()
+            obs_video_writer=None
+        payload={
+            'dataset':args.dataset,
+            'start':args.start,
+            'end':end,
+            'video_output':args.video_output,
+            'obs_video_output':args.obs_video_output,
+            'obs_video_frames':obs_video_frames,
+            'summary':summarize(records),
+            'records':records,
+        }
         write_payload(args.output,payload)
         status.update({'stage':'completed','num_records':len(records),'summary':payload['summary']})
         write_payload(status_path,status)
@@ -325,6 +422,11 @@ def main():
         if video_writer is not None:
             try:
                 video_writer.close()
+            except Exception:
+                pass
+        if obs_video_writer is not None:
+            try:
+                obs_video_writer.close()
             except Exception:
                 pass
         try:

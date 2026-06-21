@@ -9,8 +9,11 @@ This folder contains a replay-gated MoMaGen candidate for the BEHAVIOR-1K
 - Standard generation result: `success_rate=100.0`, `num_success=1`,
   `ep_lengths=[805]`
 - Replay gate verdict: `admit_candidate_after_human_review`
-- Human semantic review: pending. The replay video covers the `760..805`
-  press / contact window and reproduces the switch toggle.
+- Human semantic review: pending. The third-view replay video covers the
+  `760..805` press / contact window and reproduces the switch toggle. The
+  observation-layout replay video shows the policy-observation cameras for the
+  same window: left wrist over right wrist on the left, head camera on the
+  right.
 - Main caveat: the source HDF5 episode is marked `partial=True`, and the
   initial replay snapshot reports task success before the physical toggle
   value changes. Treat this as a replay-gated candidate requiring semantic
@@ -31,6 +34,12 @@ The action replay admission gate checks three windows:
   `first_toggle_value_step=805`, and `max_robot_can_toggle_steps=5`
 - `A216_replay_press_760_805.mp4`: 1280x720 H.264 replay video, 46 frames at
   12 FPS
+- `A216_replay_press_760_805_obs_layout_diag.json`: same `760..805` window
+  replayed while rendering the input-observation camera layout; summary matches
+  the long-window replay with `first_can_toggle_step=780`,
+  `first_toggle_value_step=805`, and `max_robot_can_toggle_steps=5`
+- `A216_replay_press_760_805_obs_layout.mp4`: 672x448 H.264 observation-layout
+  replay video, 46 frames at 12 FPS
 
 The admission gate summary is in
 `quality_gate/A216_action_replay_admission_gate_v1.json`.
@@ -46,3 +55,5 @@ The admission gate summary is in
 - `quality_gate/*.json`: replay gate inputs and summary
 - `quality_gate/A216_replay_press_760_805.mp4`: replay video for semantic
   review
+- `quality_gate/A216_replay_press_760_805_obs_layout.mp4`: observation-camera
+  replay video for semantic review from the generated episode inputs
