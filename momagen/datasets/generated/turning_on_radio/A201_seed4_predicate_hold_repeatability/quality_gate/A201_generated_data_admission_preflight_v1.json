@@ -1,0 +1,196 @@
+{
+  "manifest_type": "momagen_generated_data_admission_preflight_v1",
+  "generated_at_utc": "2026-06-21T15:09:11Z",
+  "candidate": "A201_seed4_predicate_hold_repeatability",
+  "task": "turning_on_radio",
+  "status": "observation_qualified_not_conversion_eligible",
+  "conversion_eligible": false,
+  "auto_training_enabled": false,
+  "real_training_enabled": false,
+  "training_started": false,
+  "checkpoint_written": false,
+  "wandb_enabled": false,
+  "inputs": {
+    "dataset": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/demo_src_r1_turning_on_radio_task_D0/demo.hdf5",
+    "momagen_gate": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/quality_gate/A201_action_replay_admission_gate_v1.json",
+    "strict_admission_report": null
+  },
+  "hdf5": {
+    "path": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/demo_src_r1_turning_on_radio_task_D0/demo.hdf5",
+    "exists": true,
+    "actions": {
+      "shape": [
+        811,
+        23
+      ],
+      "dtype": "float32",
+      "finite": true
+    },
+    "states": {
+      "shape": [
+        811,
+        1533
+      ],
+      "dtype": "float32",
+      "finite": true
+    },
+    "datagen_info_keys": [
+      "base_pose",
+      "eef_pose",
+      "gripper_action",
+      "object_poses"
+    ],
+    "sensor_info_keys": [
+      "robot_r1:left_realsense_link:Camera:0",
+      "robot_r1:right_realsense_link:Camera:0",
+      "robot_r1:zed_link:Camera:0"
+    ],
+    "data_attrs": {
+      "total": 811,
+      "env_args_summary": {
+        "env_name": "r1_turning_on_radio_D0",
+        "env_version": "3.7.2",
+        "task_activity_name": "turning_on_radio",
+        "task_activity_definition_id": 0,
+        "task_activity_instance_id": 0,
+        "robot_types": [
+          "R1Pro"
+        ],
+        "scene_model": "house_double_floor_lower",
+        "scene_instance": "house_double_floor_lower_task_turning_on_radio_0_0_template",
+        "init_curobo": true
+      }
+    },
+    "errors": []
+  },
+  "momagen_quality_gate": {
+    "manifest_type": "momagen_action_replay_admission_gate_v1",
+    "candidate": "A201",
+    "admission_recommendation": "admit_observation_qualified_seed_for_generated_data_pipeline",
+    "passes": [
+      "critical_window_head_camera_marker_visibility_above_threshold",
+      "critical_window_head_camera_radio_pixel_fraction_above_threshold",
+      "critical_window_wrist_camera_marker_visibility_above_threshold",
+      "full_window_head_camera_radio_pixel_fraction_above_threshold",
+      "full_window_wrist_camera_marker_visibility_above_threshold",
+      "human_review_confirms_action_trajectory_clear",
+      "human_review_confirms_observation_layout_clear",
+      "human_semantic_review_passed",
+      "long_precontact_window_reproduces_5_step_hold",
+      "near_contact_checkpoint_reproduces_5_step_hold",
+      "observation_layout_video_reproduces_long_window_metrics",
+      "short_smoke_state_consistent"
+    ],
+    "warnings": [
+      "full_window_head_camera_contact_marker_visibility_below_threshold",
+      "full_window_head_camera_marker_in_frame_only_15_of_32_frames",
+      "initial_snapshot_task_success_likely_predicate_cache_artifact",
+      "primary_overlap_radius_boundary_sensitive"
+    ],
+    "blockers": [],
+    "human_semantic_review": {
+      "status": "passed",
+      "reviewer_open_id": "ou_185d362d08c6076857084db7c27d8438",
+      "reviewer_name": "\u9648\u4fca\u5ef7",
+      "review_message_id": "om_x100b6c4b047b58a4b3eb605a42d7ecd",
+      "reviewed_videos": [
+        "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/quality_gate/A201_replay_press_780_811.mp4",
+        "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/quality_gate/A201_replay_press_780_811_obs_layout.mp4"
+      ],
+      "summary": "Human reviewer confirmed both action trajectory and observation data are sufficiently clear."
+    },
+    "critical_window": {
+      "step_start": 807,
+      "step_end": 811,
+      "visibility": {
+        "left_wrist": {
+          "frames": 5,
+          "object_visible_frames": 5,
+          "marker_in_frame_frames": 5,
+          "marker_with_object_visible_frames": 5,
+          "max_object_pixel_fraction": 0.58258056640625,
+          "max_object_bbox_area_fraction": 0.93359375,
+          "object_visible_rate": 1.0,
+          "marker_in_frame_rate": 1.0,
+          "marker_with_object_visible_rate": 1.0,
+          "mean_object_pixel_fraction": 0.506658935546875
+        },
+        "right_wrist": {
+          "frames": 5,
+          "object_visible_frames": 5,
+          "marker_in_frame_frames": 5,
+          "marker_with_object_visible_frames": 5,
+          "max_object_pixel_fraction": 0.5847930908203125,
+          "max_object_bbox_area_fraction": 0.828125,
+          "object_visible_rate": 1.0,
+          "marker_in_frame_rate": 1.0,
+          "marker_with_object_visible_rate": 1.0,
+          "mean_object_pixel_fraction": 0.584368896484375
+        },
+        "head": {
+          "frames": 5,
+          "object_visible_frames": 5,
+          "marker_in_frame_frames": 5,
+          "marker_with_object_visible_frames": 5,
+          "max_object_pixel_fraction": 0.033660888671875,
+          "max_object_bbox_area_fraction": 0.065155029296875,
+          "object_visible_rate": 1.0,
+          "marker_in_frame_rate": 1.0,
+          "marker_with_object_visible_rate": 1.0,
+          "mean_object_pixel_fraction": 0.0322845458984375
+        }
+      }
+    }
+  },
+  "media": {
+    "third_view": {
+      "path": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/quality_gate/A201_replay_press_780_811.mp4",
+      "exists": true,
+      "bytes": 498131
+    },
+    "obs_layout": {
+      "path": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/quality_gate/A201_replay_press_780_811_obs_layout.mp4",
+      "exists": true,
+      "bytes": 248138
+    }
+  },
+  "strict_behavior_admission": {
+    "available": false,
+    "passes": [],
+    "failures": [
+      "strict_simulator_admission_report_missing"
+    ]
+  },
+  "openpi_lineage_preflight": {
+    "proposed_source_type": "momagen_r1pro_23d",
+    "action_source": "r1pro_23d",
+    "lineage_compatible_with_current_openpi_contract": false,
+    "allowed_action_sources_for_proposed_type": null,
+    "note": "A MoMaGen R1Pro-23D candidate still needs an explicit source_type/action_source mapping accepted by openpi-comet before training-candidate manifest generation."
+  },
+  "verdict": {
+    "passes": [
+      "critical_window_visibility_metrics_present",
+      "hdf5_actions_states_canonical_and_finite",
+      "human_semantic_review_passed",
+      "momagen_action_observation_gate_admits_seed",
+      "review_videos_present"
+    ],
+    "warnings": [
+      "full_window_head_camera_contact_marker_visibility_below_threshold",
+      "full_window_head_camera_marker_in_frame_only_15_of_32_frames",
+      "initial_snapshot_task_success_likely_predicate_cache_artifact",
+      "primary_overlap_radius_boundary_sensitive"
+    ],
+    "blockers": [
+      "openpi_generated_data_lineage_mapping_unresolved",
+      "strict_simulator_admission_report_missing"
+    ]
+  },
+  "next_actions": [
+    "Materialize a BEHAVIOR strict simulator admission report for the A201 replay/action artifact.",
+    "Resolve or add the openpi-comet generated_data_lineage source_type/action_source mapping for MoMaGen R1Pro-23D output.",
+    "Only after strict admission and lineage compatibility pass, emit a b1k_generated_data_training_candidate manifest for loader/conversion smoke.",
+    "Reuse this preflight on A217/A218 or historical successful candidates before scheduling expensive replay/admission work."
+  ]
+}

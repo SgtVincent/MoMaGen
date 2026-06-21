@@ -46,6 +46,13 @@ The action replay admission gate checks three windows:
 The admission gate summary is in
 `quality_gate/A201_action_replay_admission_gate_v1.json`.
 
+`quality_gate/A201_generated_data_admission_preflight_v1.json` records the
+next generated-data admission / conversion preflight. It intentionally keeps
+`conversion_eligible=false`: A201 is observation-qualified and human-reviewed,
+but it still lacks a strict BEHAVIOR
+`p0_simulator_verifier_admission` report and an openpi-comet lineage mapping for
+MoMaGen R1Pro 23D output.
+
 The fuller-window diagnostic was generated in headless mode because the local
 Kit viewer path intermittently fails during swapchain initialization. This is a
 video/display environment issue, not a replay failure: the headless replay
@@ -60,6 +67,8 @@ completed and reproduced the toggle.
 - `demo_src_r1_turning_on_radio_task_D0/logs/attempt_00001_succ_1_rate_100.0.json`:
   source attempt log for the successful rollout
 - `quality_gate/*.json`: replay gate inputs and summary
+- `quality_gate/A201_generated_data_admission_preflight_v1.json`: no-training
+  admission/conversion preflight for the generated-data pipeline
 - `quality_gate/A201_replay_press_780_811.mp4`: third-view replay video for
   semantic review
 - `quality_gate/A201_replay_press_780_811_obs_layout.mp4`: observation-camera

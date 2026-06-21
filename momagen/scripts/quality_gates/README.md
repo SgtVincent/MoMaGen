@@ -42,3 +42,29 @@ If action replay succeeds but critical-window observation thresholds fail, the
 manifest should recommend
 `keep_as_replay_gated_candidate_pending_observation_quality_review` instead of
 admitting the candidate for training.
+
+## Generated-data admission / conversion preflight
+
+After a candidate passes the MoMaGen action/observation gate and human semantic
+review, run a no-simulator/no-training preflight before creating any
+BEHAVIOR/openpi-comet training-candidate manifest:
+
+```bash
+python momagen/scripts/quality_gates/build_generated_data_preflight_manifest.py \
+  --candidate A201_seed4_predicate_hold_repeatability \
+  --dataset momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/demo_src_r1_turning_on_radio_task_D0/demo.hdf5 \
+  --momagen-gate momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/quality_gate/A201_action_replay_admission_gate_v1.json \
+  --output momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/quality_gate/A201_generated_data_admission_preflight_v1.json
+```
+
+The preflight checks that the generated HDF5 has finite canonical R1Pro 23D
+actions/states, that the MoMaGen gate admits the seed, that review videos exist,
+and that critical-window visibility and human semantic review are present. It
+also reuses the current openpi-comet strict admission contract and fails closed
+unless there is a strict `p0_simulator_verifier_admission` report.
+
+For A201 this is expected to report
+`observation_qualified_not_conversion_eligible`: the seed is a good next
+admission candidate, but it is not yet a `b1k_generated_data_training_candidate`
+and must not be converted to RFT parquet until strict simulator admission and an
+explicit generated-data lineage mapping are available.
