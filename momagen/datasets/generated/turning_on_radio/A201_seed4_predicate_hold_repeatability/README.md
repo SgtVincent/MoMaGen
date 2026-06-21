@@ -31,6 +31,15 @@ The action replay admission gate checks three windows:
   `ToggledOn=True` at step `811`
 - `A201_replay_press_805_811_overlap_diag.json`: near-contact checkpoint,
   also reproduces the 5-step hold and reaches `ToggledOn=True` at step `811`
+- `A201_replay_press_780_811.mp4`: 1280x720 H.264 third-view replay video for
+  the press / contact window
+- `A201_replay_press_780_811_obs_layout.mp4`: 672x448 H.264 observation-layout
+  replay video for the same window
+- `A201_replay_press_780_811_obs_visibility_diag.json`: per-camera observation
+  visibility gate for the same window. Full-window head marker visibility is
+  only `15/32`, so it remains a warning. The critical contact window
+  `807..811` passes: head marker `5/5`, head radio mean pixel fraction
+  `0.0322845458984375`, and right-wrist marker `5/5`.
 
 The admission gate summary is in
 `quality_gate/A201_action_replay_admission_gate_v1.json`.
@@ -49,3 +58,7 @@ completed and reproduced the toggle.
 - `demo_src_r1_turning_on_radio_task_D0/logs/attempt_00001_succ_1_rate_100.0.json`:
   source attempt log for the successful rollout
 - `quality_gate/*.json`: replay gate inputs and summary
+- `quality_gate/A201_replay_press_780_811.mp4`: third-view replay video for
+  semantic review
+- `quality_gate/A201_replay_press_780_811_obs_layout.mp4`: observation-camera
+  replay video for semantic review from generated episode inputs

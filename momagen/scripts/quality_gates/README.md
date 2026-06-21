@@ -28,12 +28,17 @@ python momagen/scripts/quality_gates/build_action_replay_gate_manifest.py \
   --output momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/quality_gate/A216_action_replay_admission_gate_v1.json
 ```
 
-Default observation thresholds are conservative admission checks:
+Default observation thresholds are conservative admission checks for the
+critical contact window from `first_can_toggle_step` through
+`first_toggle_value_step`. Full-window visibility is still reported, but
+full-window misses are warnings instead of hard admission blockers because
+pre-contact approach can legitimately begin outside a tight head-camera view.
 
 - head camera marker in-frame rate must be at least `0.8`,
 - head camera radio mean pixel fraction must be at least `0.01`,
 - at least one wrist camera must have marker in-frame rate at least `0.8`.
 
-If action replay succeeds but observation thresholds fail, the manifest should
-recommend `keep_as_replay_gated_candidate_pending_observation_quality_review`
-instead of admitting the candidate for training.
+If action replay succeeds but critical-window observation thresholds fail, the
+manifest should recommend
+`keep_as_replay_gated_candidate_pending_observation_quality_review` instead of
+admitting the candidate for training.

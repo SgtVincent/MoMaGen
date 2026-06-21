@@ -1,6 +1,6 @@
 {
   "manifest_type": "momagen_action_replay_admission_gate_v1",
-  "created_at": "2026-06-21T21:49:07+08:00",
+  "created_at": "2026-06-21T21:57:10+08:00",
   "candidate": "A216",
   "dataset": "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A216_seed5_frac100_slowpress_repeatability/demo_src_r1_turning_on_radio_task_D0/demo.hdf5",
   "inputs": {
@@ -232,6 +232,48 @@
         "mean_object_pixel_fraction": 0.001373954441236413
       }
     },
+    "obs_visibility_critical_window": {
+      "step_start": 780,
+      "step_end": 805,
+      "visibility": {
+        "left_wrist": {
+          "frames": 26,
+          "object_visible_frames": 26,
+          "marker_in_frame_frames": 26,
+          "marker_with_object_visible_frames": 26,
+          "max_object_pixel_fraction": 0.4024200439453125,
+          "max_object_bbox_area_fraction": 0.51953125,
+          "object_visible_rate": 1.0,
+          "marker_in_frame_rate": 1.0,
+          "marker_with_object_visible_rate": 1.0,
+          "mean_object_pixel_fraction": 0.3404652522160457
+        },
+        "right_wrist": {
+          "frames": 26,
+          "object_visible_frames": 26,
+          "marker_in_frame_frames": 26,
+          "marker_with_object_visible_frames": 26,
+          "max_object_pixel_fraction": 0.6007537841796875,
+          "max_object_bbox_area_fraction": 0.83984375,
+          "object_visible_rate": 1.0,
+          "marker_in_frame_rate": 1.0,
+          "marker_with_object_visible_rate": 1.0,
+          "mean_object_pixel_fraction": 0.5998582106370193
+        },
+        "head": {
+          "frames": 26,
+          "object_visible_frames": 26,
+          "marker_in_frame_frames": 0,
+          "marker_with_object_visible_frames": 0,
+          "max_object_pixel_fraction": 0.0045013427734375,
+          "max_object_bbox_area_fraction": 0.01348876953125,
+          "object_visible_rate": 1.0,
+          "marker_in_frame_rate": 0.0,
+          "marker_with_object_visible_rate": 0.0,
+          "mean_object_pixel_fraction": 0.0016450148362379808
+        }
+      }
+    },
     "primary_to_relaxed_overlap_boundary_steps": {
       "count": 7,
       "first_step": 781,
@@ -391,21 +433,26 @@
   },
   "quality_verdict": {
     "passes": [
+      "critical_window_wrist_camera_marker_visibility_above_threshold",
+      "full_window_wrist_camera_marker_visibility_above_threshold",
       "long_precontact_window_reproduces_5_step_hold",
       "near_contact_checkpoint_reproduces_5_step_hold",
       "observation_layout_video_reproduces_long_window_metrics",
-      "short_smoke_state_consistent",
-      "wrist_camera_marker_visibility_above_threshold"
+      "short_smoke_state_consistent"
     ],
     "warnings": [
-      "head_camera_marker_in_frame_only_1_of_46_frames",
-      "head_camera_radio_pixel_fraction_0.001374_below_threshold",
+      "critical_window_head_camera_marker_in_frame_only_0_of_26_frames",
+      "critical_window_head_camera_radio_pixel_fraction_0.001645_below_threshold",
+      "full_window_head_camera_contact_marker_visibility_below_threshold",
+      "full_window_head_camera_marker_in_frame_only_1_of_46_frames",
+      "full_window_head_camera_radio_pixel_fraction_0.001374_below_threshold",
+      "full_window_head_camera_radio_pixel_fraction_below_threshold",
       "initial_snapshot_task_success_likely_predicate_cache_artifact",
       "primary_overlap_radius_boundary_sensitive"
     ],
     "blockers": [
-      "head_camera_contact_marker_visibility_below_threshold",
-      "head_camera_radio_pixel_fraction_below_threshold"
+      "critical_window_head_camera_contact_marker_visibility_below_threshold",
+      "critical_window_head_camera_radio_pixel_fraction_below_threshold"
     ],
     "admission_recommendation": "keep_as_replay_gated_candidate_pending_observation_quality_review"
   }

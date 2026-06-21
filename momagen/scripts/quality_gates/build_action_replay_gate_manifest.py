@@ -66,8 +66,59 @@ def classify_replay(summary):
     return "fail"
 
 
-def classify_obs_visibility(summary, args):
-    visibility = summary.get("observation_visibility") or {}
+def _empty_visibility_bucket():
+    return {
+        "frames": 0,
+        "object_visible_frames": 0,
+        "marker_in_frame_frames": 0,
+        "marker_with_object_visible_frames": 0,
+        "max_object_pixel_fraction": 0.0,
+        "max_object_bbox_area_fraction": 0.0,
+        "object_pixel_fraction_sum": 0.0,
+    }
+
+
+def _finalize_visibility_bucket(bucket):
+    frames = max(1, bucket["frames"])
+    bucket["object_visible_rate"] = bucket["object_visible_frames"] / frames
+    bucket["marker_in_frame_rate"] = bucket["marker_in_frame_frames"] / frames
+    bucket["marker_with_object_visible_rate"] = bucket["marker_with_object_visible_frames"] / frames
+    bucket["mean_object_pixel_fraction"] = bucket["object_pixel_fraction_sum"] / frames
+    del bucket["object_pixel_fraction_sum"]
+    return bucket
+
+
+def summarize_obs_visibility_for_steps(path, step_start, step_end):
+    if path is None or step_start is None or step_end is None:
+        return {}
+    data = load_json(path)
+    out = {}
+    for record in data.get("records", []):
+        step = record.get("step")
+        if step is None or step < step_start or step > step_end:
+            continue
+        for obj in (record.get("objects") or {}).values():
+            for cam_name, vis in (obj.get("observation_visibility") or {}).items():
+                bucket = out.setdefault(cam_name, _empty_visibility_bucket())
+                bucket["frames"] += 1
+                if vis.get("object_visible"):
+                    bucket["object_visible_frames"] += 1
+                if vis.get("marker_projection", {}).get("in_frame"):
+                    bucket["marker_in_frame_frames"] += 1
+                if vis.get("object_visible") and vis.get("marker_projection", {}).get("in_frame"):
+                    bucket["marker_with_object_visible_frames"] += 1
+                pix_frac = vis.get("object_pixel_fraction")
+                if isinstance(pix_frac, (int, float)):
+                    bucket["object_pixel_fraction_sum"] += float(pix_frac)
+                    bucket["max_object_pixel_fraction"] = max(bucket["max_object_pixel_fraction"], float(pix_frac))
+                bbox_frac = vis.get("object_bbox_area_fraction")
+                if isinstance(bbox_frac, (int, float)):
+                    bucket["max_object_bbox_area_fraction"] = max(bucket["max_object_bbox_area_fraction"], float(bbox_frac))
+    return {cam_name: _finalize_visibility_bucket(bucket) for cam_name, bucket in out.items()}
+
+
+def classify_visibility_summary(visibility, args, scope, hard_fail):
+    visibility = visibility or {}
     result = {
         "passes": [],
         "warnings": [],
@@ -75,7 +126,8 @@ def classify_obs_visibility(summary, args):
         "visibility": visibility,
     }
     if not visibility:
-        result["blockers"].append("observation_visibility_metrics_missing")
+        key = f"{scope}_observation_visibility_metrics_missing"
+        (result["blockers"] if hard_fail else result["warnings"]).append(key)
         return result
 
     head = visibility.get("head") or {}
@@ -83,27 +135,31 @@ def classify_obs_visibility(summary, args):
     head_object_fraction = head.get("mean_object_pixel_fraction")
     if isinstance(head_marker_rate, (int, float)):
         if head_marker_rate >= args.min_head_marker_rate:
-            result["passes"].append("head_camera_marker_visibility_above_threshold")
+            result["passes"].append(f"{scope}_head_camera_marker_visibility_above_threshold")
         else:
             frames = head.get("frames")
             marker_frames = head.get("marker_in_frame_frames")
             result["warnings"].append(
-                f"head_camera_marker_in_frame_only_{marker_frames}_of_{frames}_frames"
+                f"{scope}_head_camera_marker_in_frame_only_{marker_frames}_of_{frames}_frames"
             )
-            result["blockers"].append("head_camera_contact_marker_visibility_below_threshold")
+            key = f"{scope}_head_camera_contact_marker_visibility_below_threshold"
+            (result["blockers"] if hard_fail else result["warnings"]).append(key)
     else:
-        result["blockers"].append("head_camera_marker_visibility_missing")
+        key = f"{scope}_head_camera_marker_visibility_missing"
+        (result["blockers"] if hard_fail else result["warnings"]).append(key)
 
     if isinstance(head_object_fraction, (int, float)):
         if head_object_fraction >= args.min_head_object_pixel_fraction:
-            result["passes"].append("head_camera_radio_pixel_fraction_above_threshold")
+            result["passes"].append(f"{scope}_head_camera_radio_pixel_fraction_above_threshold")
         else:
             result["warnings"].append(
-                f"head_camera_radio_pixel_fraction_{head_object_fraction:.6f}_below_threshold"
+                f"{scope}_head_camera_radio_pixel_fraction_{head_object_fraction:.6f}_below_threshold"
             )
-            result["blockers"].append("head_camera_radio_pixel_fraction_below_threshold")
+            key = f"{scope}_head_camera_radio_pixel_fraction_below_threshold"
+            (result["blockers"] if hard_fail else result["warnings"]).append(key)
     else:
-        result["blockers"].append("head_camera_radio_pixel_fraction_missing")
+        key = f"{scope}_head_camera_radio_pixel_fraction_missing"
+        (result["blockers"] if hard_fail else result["warnings"]).append(key)
 
     wrist_names = [name.strip() for name in args.wrist_cameras.split(",") if name.strip()]
     wrist_ok = []
@@ -113,10 +169,29 @@ def classify_obs_visibility(summary, args):
         if isinstance(marker_rate, (int, float)) and marker_rate >= args.min_wrist_marker_rate:
             wrist_ok.append(name)
     if len(wrist_ok) >= args.min_good_wrist_cameras:
-        result["passes"].append("wrist_camera_marker_visibility_above_threshold")
+        result["passes"].append(f"{scope}_wrist_camera_marker_visibility_above_threshold")
     else:
-        result["blockers"].append("insufficient_wrist_camera_marker_visibility")
+        key = f"{scope}_insufficient_wrist_camera_marker_visibility"
+        (result["blockers"] if hard_fail else result["warnings"]).append(key)
 
+    return result
+
+
+def classify_obs_visibility(summary, path, long_summary, args):
+    full_visibility = summary.get("observation_visibility") or {}
+    result = classify_visibility_summary(full_visibility, args, "full_window", hard_fail=False)
+    critical_start = long_summary.get("first_can_toggle_step")
+    critical_end = long_summary.get("first_toggle_value_step")
+    critical_visibility = summarize_obs_visibility_for_steps(path, critical_start, critical_end)
+    critical_result = classify_visibility_summary(critical_visibility, args, "critical_window", hard_fail=True)
+    result["passes"].extend(critical_result["passes"])
+    result["warnings"].extend(critical_result["warnings"])
+    result["blockers"].extend(critical_result["blockers"])
+    result["critical_window"] = {
+        "step_start": critical_start,
+        "step_end": critical_end,
+        "visibility": critical_visibility,
+    }
     return result
 
 
@@ -240,7 +315,12 @@ def build_manifest(args):
 
     obs_visibility_result = None
     if obs_visibility_long_window is not None:
-        obs_visibility_result = classify_obs_visibility(obs_visibility_summary, args)
+        obs_visibility_result = classify_obs_visibility(
+            obs_visibility_summary,
+            args.obs_visibility_long_window,
+            long_summary,
+            args,
+        )
         passes.extend(obs_visibility_result["passes"])
         warnings.extend(obs_visibility_result["warnings"])
         blockers.extend(obs_visibility_result["blockers"])
@@ -266,7 +346,8 @@ def build_manifest(args):
     if blockers:
         admission = "do_not_admit_yet"
         if obs_visibility_result is not None and any(
-            blocker.startswith("head_camera") or blocker.startswith("insufficient_wrist")
+            blocker.startswith("critical_window_head_camera")
+            or blocker.startswith("critical_window_insufficient_wrist")
             for blocker in obs_visibility_result["blockers"]
         ):
             admission = "keep_as_replay_gated_candidate_pending_observation_quality_review"
@@ -316,6 +397,7 @@ def build_manifest(args):
                 layout="left column: left wrist over right wrist at 224x224 each; right column: head camera at 448x448",
             ),
             "obs_visibility": (obs_visibility_result or {}).get("visibility"),
+            "obs_visibility_critical_window": (obs_visibility_result or {}).get("critical_window"),
             "primary_to_relaxed_overlap_boundary_steps": boundary_summary,
         },
         "quality_verdict": {
