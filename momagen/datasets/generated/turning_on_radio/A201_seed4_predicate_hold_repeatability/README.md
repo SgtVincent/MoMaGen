@@ -8,13 +8,15 @@ BEHAVIOR-1K `turning_on_radio` task.
 - Candidate: `A201_seed4_predicate_hold_repeatability`
 - Standard generation result: `success_rate=100.0`, `num_success=1`,
   `ep_lengths=[811]`
-- Replay gate verdict: `admit_candidate_after_human_review`
-- Human semantic review: positive for the `780..811` press / contact window;
-  the video shows a plausible switch-touching motion.
+- Replay gate verdict:
+  `admit_observation_qualified_seed_for_generated_data_pipeline`
+- Human semantic review: passed. The reviewer confirmed that both the action
+  trajectory and observation-layout data are sufficiently clear for the
+  `780..811` press / contact window.
 - Main caveat: the quality record shows the task predicate is already true at
-  Phase 2 entry, followed by a Phase 2 TrajOpt failure. Treat this as a
-  candidate requiring semantic review, not as an automatically admitted training
-  sample.
+  Phase 2 entry, followed by a Phase 2 TrajOpt failure. Keep this caveat in the
+  admission record, but A201 is now the first observation-qualified seed for
+  the generated-data pipeline.
 
 ## Replay gate evidence
 

@@ -414,6 +414,9 @@
       "critical_window_wrist_camera_marker_visibility_above_threshold",
       "full_window_head_camera_radio_pixel_fraction_above_threshold",
       "full_window_wrist_camera_marker_visibility_above_threshold",
+      "human_review_confirms_action_trajectory_clear",
+      "human_review_confirms_observation_layout_clear",
+      "human_semantic_review_passed",
       "long_precontact_window_reproduces_5_step_hold",
       "near_contact_checkpoint_reproduces_5_step_hold",
       "observation_layout_video_reproduces_long_window_metrics",
@@ -426,6 +429,17 @@
       "primary_overlap_radius_boundary_sensitive"
     ],
     "blockers": [],
-    "admission_recommendation": "admit_candidate_after_human_review"
+    "admission_recommendation": "admit_observation_qualified_seed_for_generated_data_pipeline",
+    "human_semantic_review": {
+      "status": "passed",
+      "reviewer_open_id": "ou_185d362d08c6076857084db7c27d8438",
+      "reviewer_name": "\u9648\u4fca\u5ef7",
+      "review_message_id": "om_x100b6c4b047b58a4b3eb605a42d7ecd",
+      "reviewed_videos": [
+        "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/quality_gate/A201_replay_press_780_811.mp4",
+        "/home/ubuntu/repo/MoMaGen/momagen/datasets/generated/turning_on_radio/A201_seed4_predicate_hold_repeatability/quality_gate/A201_replay_press_780_811_obs_layout.mp4"
+      ],
+      "summary": "Human reviewer confirmed both action trajectory and observation data are sufficiently clear."
+    }
   }
 }
