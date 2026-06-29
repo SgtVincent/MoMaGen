@@ -29,6 +29,7 @@ def create_env(
     use_image_obs=None, 
     use_depth_obs=None, 
     init_curobo=True,
+    curobo_backend_version=None,
     policy_rollout=False,
     manipulation_only=False,
     real_robot_mode=False,
@@ -55,6 +56,7 @@ def create_env(
         render_offscreen (bool or None): optionally override rendering behavior
         use_image_obs (bool or None): optionally override rendering behavior
         use_depth_obs (bool or None): optionally override rendering behavior
+        curobo_backend_version (str or None): optional CuRobo backend version to forward to OmniGibson primitives.
     """
     env_meta = deepcopy(env_meta)
 
@@ -101,6 +103,9 @@ def create_env(
         env_kwargs.pop("camera_width", None)
         env_kwargs.pop("reward_shaping", None)
         env_kwargs["init_curobo"] = init_curobo
+        resolved_curobo_backend_version = curobo_backend_version or os.environ.get("MOMAGEN_CUROBO_BACKEND_VERSION")
+        if resolved_curobo_backend_version:
+            env_kwargs["curobo_backend_version"] = resolved_curobo_backend_version
         # MoMaGen encodes robot + dataset difficulty in task names (e.g.
         # r1_picking_up_trash_D0), while OmniGibson's BDDL activity registry
         # only knows the activity name (picking_up_trash). Keep the suffixed
@@ -127,14 +132,24 @@ def create_env(
         # source HDF5 already contains the desired robot pose in the config, so
         # disable presampled-pose lookup for MoMaGen generation env creation.
         env_kwargs.setdefault("task", {})["use_presampled_robot_pose"] = False
-        return og_env_class.create_for_data_processing(
-            env_name=env_meta["env_name"],
-            policy_rollout=policy_rollout,
-            manipulation_only=manipulation_only,
-            real_robot_mode=real_robot_mode,
-            baseline=baseline,
-            **env_kwargs,
-        )
+        old_backend_env = os.environ.get("MOMAGEN_CUROBO_BACKEND_VERSION")
+        if resolved_curobo_backend_version:
+            os.environ["MOMAGEN_CUROBO_BACKEND_VERSION"] = str(resolved_curobo_backend_version)
+        try:
+            return og_env_class.create_for_data_processing(
+                env_name=env_meta["env_name"],
+                policy_rollout=policy_rollout,
+                manipulation_only=manipulation_only,
+                real_robot_mode=real_robot_mode,
+                baseline=baseline,
+                **env_kwargs,
+            )
+        finally:
+            if resolved_curobo_backend_version:
+                if old_backend_env is None:
+                    os.environ.pop("MOMAGEN_CUROBO_BACKEND_VERSION", None)
+                else:
+                    os.environ["MOMAGEN_CUROBO_BACKEND_VERSION"] = old_backend_env
 
     env = EnvUtils.create_env_for_data_processing(
         env_meta=env_meta,
