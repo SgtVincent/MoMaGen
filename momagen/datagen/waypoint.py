@@ -5,6 +5,7 @@ import json
 import math
 import os
 import time
+import traceback
 import numpy as np
 import copy
 from copy import deepcopy
@@ -8817,6 +8818,8 @@ class WaypointTrajectory(object):
                             print(f"[MOMAGEN_NAV_EXEC_STEP_DEBUG] step={temp_idx} stage=step_done", flush=True)
                 except Exception as e:
                     print(f"Base MP trial {base_mp_trial} raised {type(e).__name__}: {e}. Retrying...")
+                    if bool(int(os.environ.get("MOMAGEN_NAV_EXCEPTION_TRACEBACK", "0") or 0)):
+                        traceback.print_exc()
                     env.primitive.mp_err = getattr(env.primitive, "mp_err", None) or "BaseMPException"
                     base_mp_trial += 1
                     nav_mp_success = False
