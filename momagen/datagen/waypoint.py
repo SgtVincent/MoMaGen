@@ -12,7 +12,11 @@ from copy import deepcopy
 import momagen.utils.pose_utils as PoseUtils
 
 import omnigibson.utils.transform_utils as T
-from omnigibson.action_primitives.curobo import CuRoboEmbodimentSelection
+from omnigibson.action_primitives.curobo import (
+    CuRoboEmbodimentSelection,
+    default_embodiment_variant,
+    is_default_embodiment,
+)
 from omnigibson.controllers import ControlType, HolonomicBaseJointController, JointController
 import omnigibson.lazy as lazy
 import torch as th
@@ -41,6 +45,61 @@ def _compute_trajectories_with_paths(cmg, **kwargs):
         else:
             traj_paths.extend(mp_result.get_paths())
     return mp_results, traj_paths
+
+
+def _mp_status_value(mp_result):
+    """Return a string CuRobo status, tolerating admission-filtered results with status=None."""
+    status_obj = getattr(mp_result, "status", None)
+    return str(getattr(status_obj, "value", status_obj))
+
+
+def _attached_payload_options(attached_obj, base_options=None, ee_pose_by_link=None, remove_from_world=False):
+    """Build CuRobo attach options for objects currently carried by an end-effector."""
+    if not attached_obj:
+        return base_options
+
+    options = copy.deepcopy(base_options) if base_options is not None else {}
+    for link_name in attached_obj.keys():
+        link_options = dict(options.get(link_name, {}))
+        if remove_from_world:
+            link_options.setdefault("remove_obstacles_from_world_config", True)
+        if ee_pose_by_link is not None and link_name in ee_pose_by_link:
+            link_options["ee_pose"] = ee_pose_by_link[link_name]
+        options[link_name] = link_options
+    return options
+
+
+def _attached_payload_link_pair_collision_pairs(robot, attached_obj):
+    """Build manipulator-vs-attached-payload CuRobo link pairs for selective collision validation."""
+    if not attached_obj:
+        return []
+
+    pairs = []
+    for holder_eef_link in attached_obj.keys():
+        holder_arm = None
+        for arm_name, eef_link_name in robot.eef_link_names.items():
+            if eef_link_name == holder_eef_link:
+                holder_arm = arm_name
+                break
+        if holder_arm is None:
+            continue
+
+        attached_link_name = robot.curobo_attached_object_link_names.get(holder_eef_link)
+        if attached_link_name is None:
+            continue
+
+        for arm_name in robot.eef_link_names.keys():
+            if arm_name == holder_arm:
+                continue
+            active_arm_links = [
+                f"{arm_name}_arm_link{i}" for i in range(1, 8)
+            ] + [
+                f"{arm_name}_gripper_link",
+                f"{arm_name}_gripper_finger_link1",
+                f"{arm_name}_gripper_finger_link2",
+            ]
+            pairs.append((active_arm_links, [attached_link_name]))
+    return pairs
 
 
 def _add_linearly_interpolated_waypoints(env, q_traj, max_inter_dist=0.01):
@@ -93,6 +152,177 @@ def _safe_index_tensor(idx, *, device=None):
     if isinstance(idx, th.Tensor):
         return idx.to(device=device) if device is not None else idx
     return th.as_tensor(idx, dtype=th.long, device=device)
+
+
+def _debug_to_np(x):
+    if x is None:
+        return None
+    if hasattr(x, "detach"):
+        x = x.detach()
+    if hasattr(x, "cpu"):
+        x = x.cpu()
+    return np.asarray(x, dtype=float)
+
+
+def _joint_error_summary_by_group(robot, current_q, target_q):
+    """Summarize joint tracking error by robot control group."""
+    current_q = th.as_tensor(current_q).detach().cpu().float()
+    target_q = th.as_tensor(target_q).detach().cpu().float()
+    diff = (current_q - target_q).abs()
+
+    def _group(name, idx):
+        idx = _safe_index_tensor(idx)
+        if idx is None:
+            return None
+        if isinstance(idx, slice):
+            idx = th.arange(current_q.shape[0])[idx]
+        idx = idx.detach().cpu().long()
+        if idx.numel() == 0:
+            return None
+        vals = diff[idx]
+        argmax_local = int(th.argmax(vals).item())
+        joint_idx = int(idx[argmax_local].item())
+        joint_names = getattr(robot, "dof_names_ordered", None)
+        return {
+            "max_abs": float(vals.max().item()),
+            "mean_abs": float(vals.mean().item()),
+            "argmax_joint_idx": joint_idx,
+            "argmax_joint_name": None
+            if joint_names is None or joint_idx >= len(joint_names)
+            else str(joint_names[joint_idx]),
+            "current_at_argmax": float(current_q[joint_idx].item()),
+            "target_at_argmax": float(target_q[joint_idx].item()),
+        }
+
+    groups = {}
+    for attr_name in ("base_control_idx", "base_idx", "trunk_control_idx"):
+        if hasattr(robot, attr_name):
+            record = _group(attr_name, getattr(robot, attr_name))
+            if record is not None:
+                groups[attr_name] = record
+    for arm_name in ("left", "right"):
+        for attr_name, prefix in (
+            ("arm_control_idx", "arm"),
+            ("gripper_control_idx", "gripper"),
+        ):
+            idx_by_arm = getattr(robot, attr_name, None)
+            if isinstance(idx_by_arm, dict) and arm_name in idx_by_arm:
+                record = _group(f"{prefix}_{arm_name}", idx_by_arm[arm_name])
+                if record is not None:
+                    groups[f"{prefix}_{arm_name}"] = record
+    return groups
+
+
+def _joint_path_quality_by_group(robot, q_path):
+    """Summarize whole-body joint path length for candidate ranking."""
+    q_path = th.as_tensor(q_path).detach().cpu().float()
+    records = {}
+
+    def _idx_tensor(idx):
+        idx = _safe_index_tensor(idx)
+        if idx is None:
+            return None
+        if isinstance(idx, slice):
+            idx = th.arange(q_path.shape[1])[idx]
+        return idx.detach().cpu().long()
+
+    def _joint_names(idx):
+        names = getattr(robot, "dof_names_ordered", None)
+        if names is None:
+            return None
+        return [str(names[int(i)]) if int(i) < len(names) else str(int(i)) for i in idx.tolist()]
+
+    def _path_metric(name, idx, *, yaw=False):
+        idx = _idx_tensor(idx)
+        if idx is None or idx.numel() == 0 or q_path.shape[0] <= 1:
+            return None
+        values = q_path[:, idx]
+        if yaw and values.shape[1] >= 3:
+            xy_step = th.linalg.norm(values[1:, :2] - values[:-1, :2], dim=-1)
+            yaw_step = th.as_tensor(
+                [abs(float(wrap_angle(v))) for v in (values[1:, 2] - values[:-1, 2])],
+                dtype=values.dtype,
+            )
+            return {
+                "path_m": float(xy_step.sum().item()),
+                "net_m": float(th.linalg.norm(values[-1, :2] - values[0, :2]).item()),
+                "path_rad": float(yaw_step.sum().item()),
+                "net_rad": float(abs(wrap_angle(values[-1, 2] - values[0, 2]))),
+                "max_step_m": float(xy_step.max().item()) if xy_step.numel() else 0.0,
+                "max_step_rad": float(yaw_step.max().item()) if yaw_step.numel() else 0.0,
+                "joint_names": _joint_names(idx),
+            }
+        step = th.linalg.norm(values[1:] - values[:-1], dim=-1)
+        net = th.linalg.norm(values[-1] - values[0])
+        return {
+            "path": float(step.sum().item()),
+            "net": float(net.item()),
+            "path_to_net_ratio": float(step.sum().item() / max(float(net.item()), 1e-9)),
+            "max_step": float(step.max().item()) if step.numel() else 0.0,
+            "joint_names": _joint_names(idx),
+        }
+
+    if hasattr(robot, "base_control_idx"):
+        metric = _path_metric("base", getattr(robot, "base_control_idx"), yaw=True)
+        if metric is not None:
+            records["base"] = metric
+    if hasattr(robot, "trunk_control_idx"):
+        metric = _path_metric("trunk", getattr(robot, "trunk_control_idx"))
+        if metric is not None:
+            records["trunk"] = metric
+    arm_control_idx = getattr(robot, "arm_control_idx", None)
+    if isinstance(arm_control_idx, dict):
+        for arm_name in ("left", "right"):
+            if arm_name in arm_control_idx:
+                metric = _path_metric(f"arm_{arm_name}", arm_control_idx[arm_name])
+                if metric is not None:
+                    records[f"arm_{arm_name}"] = metric
+    return records
+
+
+def _action_limit_summary_by_controller(robot, action):
+    """Summarize whether an action lies outside each controller's command limits."""
+    action_np = np.asarray(_debug_to_np(action), dtype=float)
+    records = {}
+    for controller_name, action_idx in getattr(robot, "controller_action_idx", {}).items():
+        controller = getattr(robot, "controllers", {}).get(controller_name)
+        if controller is None:
+            continue
+        try:
+            idx = _safe_index_tensor(action_idx)
+            if isinstance(idx, slice):
+                values = action_np[idx]
+            else:
+                values = action_np[idx.detach().cpu().long().numpy()]
+            values = np.asarray(values, dtype=float)
+            record = {
+                "min": float(np.nanmin(values)) if values.size else None,
+                "max": float(np.nanmax(values)) if values.size else None,
+                "outside_action_space_count": 0,
+            }
+            limits = getattr(controller, "command_input_limits", None)
+            if limits is not None:
+                low = np.asarray(_debug_to_np(limits[0]), dtype=float)
+                high = np.asarray(_debug_to_np(limits[1]), dtype=float)
+                below = values < low
+                above = values > high
+                record.update(
+                    {
+                        "low_min": float(np.nanmin(low)) if low.size else None,
+                        "high_max": float(np.nanmax(high)) if high.size else None,
+                        "outside_action_space_count": int(np.count_nonzero(below | above)),
+                        "max_below_limit": float(np.nanmax(np.where(below, low - values, 0.0)))
+                        if values.size
+                        else 0.0,
+                        "max_above_limit": float(np.nanmax(np.where(above, values - high, 0.0)))
+                        if values.size
+                        else 0.0,
+                    }
+                )
+            records[controller_name] = record
+        except Exception as exc:
+            records[controller_name] = {"error": f"{type(exc).__name__}: {exc}"}
+    return records
 
 
 def _joint_trajectory_point_to_action(robot, q):
@@ -1470,18 +1700,19 @@ class WaypointTrajectory(object):
 
                         # Base condition
                         if arm_mp_trial > 0:
+                            status_value = _mp_status_value(mp_results[0])
 
                             # If we are not retrying nav on ARM IK/TrajOpt failures, no need to run num_tries times as it most likely won't succeed. So, we can save time
                             if env.retry_nav_on_arm_mp_failure:
                                 base_condition = arm_mp_trial == num_tries
                             else:
-                                base_condition = arm_mp_trial == num_tries or ("IK Fail" in mp_results[0].status.value)
+                                base_condition = arm_mp_trial == num_tries or ("IK Fail" in status_value)
 
                             if base_condition:
                                 print("Arm MP failed after {} trials. Giving up.".format(num_tries))
-                                if "TrajOpt Fail" in mp_results[0].status.value:
+                                if "TrajOpt Fail" in status_value:
                                     env.err = "ArmMPTrajOptFailed"
-                                elif "IK Fail" in mp_results[0].status.value:
+                                elif "IK Fail" in status_value:
                                     env.err = "ArmMPIKFailed"
                                 else:
                                     env.err = "ArmMPOtherFailed"
@@ -1510,6 +1741,7 @@ class WaypointTrajectory(object):
                             success_ratio=1.0 / env.primitive._motion_generator.batch_size,
                             attached_obj=attached_obj,
                             attached_obj_scale=attached_obj_scale,
+                            attached_obj_options=_attached_payload_options(attached_obj),
                             emb_sel=emb_sel,
                         )
                         arm_mp_planning_finish_time = time.time()
@@ -2960,6 +3192,217 @@ class WaypointTrajectory(object):
                         }
                     )
 
+        def _maybe_apply_toggle_marker_joint_staging_targets(target_pos, target_quat, emb_sel):
+            """Jointly choose active-finger precontact and held-object staging targets for toggle tasks."""
+            if not bool(int(os.environ.get("MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_TARGETS", "0") or 0)):
+                return
+            min_phase = int(os.environ.get("MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_MIN_PHASE", "0") or 0)
+            max_phase = int(os.environ.get("MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_MAX_PHASE", "999999") or 999999)
+            phase_in_range = min_phase <= int(env.execution_phase_ind) <= max_phase
+            record = {
+                "enabled": True,
+                "phase": int(env.execution_phase_ind),
+                "phase_type": phase_type,
+                "phase_in_range": bool(phase_in_range),
+                "emb_sel": str(emb_sel),
+            }
+            if not phase_in_range:
+                record.update({"applied": False, "reason": "phase_out_of_range"})
+            elif phase_type != "coordinated":
+                record.update({"applied": False, "reason": "phase_type_not_coordinated"})
+            elif ref_obj is None or object_states.ToggledOn not in getattr(ref_obj, "states", {}):
+                record.update({"applied": False, "reason": "ref_obj_not_toggleable"})
+            elif not is_default_embodiment(emb_sel):
+                record.update({"applied": False, "reason": "non_default_embodiment"})
+            else:
+                try:
+                    active_arm = os.environ.get("MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_ACTIVE_ARM", "left").strip().lower()
+                    hold_arm = os.environ.get("MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_HOLD_ARM", "right").strip().lower()
+                    if active_arm not in robot.eef_link_names or hold_arm not in robot.eef_link_names:
+                        raise ValueError(f"invalid active/hold arm: {active_arm}/{hold_arm}")
+                    active_link_name = robot.eef_link_names[active_arm]
+                    hold_link_name = robot.eef_link_names[hold_arm]
+                    if active_link_name not in target_pos or hold_link_name not in target_pos:
+                        raise ValueError("missing_active_or_hold_target")
+
+                    toggle_state = ref_obj.states[object_states.ToggledOn]
+                    marker = getattr(toggle_state, "visual_marker", None)
+                    if marker is None:
+                        raise ValueError("missing_visual_marker")
+                    marker_pos_raw, marker_quat_raw = marker.get_position_orientation()
+                    marker_pos = th.as_tensor(marker_pos_raw, dtype=th.float32)
+                    marker_quat = th.as_tensor(marker_quat_raw, dtype=th.float32)
+                    marker_rot = T.quat2mat(marker_quat)
+
+                    marker_local_offset_raw = os.environ.get(
+                        "MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_MARKER_LOCAL_OFFSET",
+                        os.environ.get(
+                            "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_MARKER_LOCAL_OFFSET",
+                            os.environ.get(
+                                "MOMAGEN_TOGGLE_MARKER_POST_MP_MARKER_LOCAL_OFFSET",
+                                os.environ.get(
+                                    "MOMAGEN_TOGGLE_MARKER_TARGET_MARKER_LOCAL_OFFSET",
+                                    "0.044,-0.035,0.013",
+                                ),
+                            ),
+                        ),
+                    )
+                    marker_local_offset_values = [
+                        float(value.strip())
+                        for value in marker_local_offset_raw.split(",")
+                        if value.strip()
+                    ]
+                    if len(marker_local_offset_values) != 3:
+                        raise ValueError("marker_local_offset must contain 3 comma-separated floats")
+                    marker_local_offset = th.tensor(marker_local_offset_values, dtype=marker_pos.dtype)
+
+                    force_finger_link = os.environ.get(
+                        "MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_FORCE_FINGER_LINK",
+                        os.environ.get(
+                            "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_FORCE_FINGER_LINK",
+                            os.environ.get("MOMAGEN_TOGGLE_MARKER_TARGET_FORCE_FINGER_LINK", ""),
+                        ),
+                    ).strip()
+                    finger_links = getattr(robot, "finger_links", {}).get(active_arm, [])
+                    finger_records = []
+                    for finger_link in finger_links:
+                        finger_pos = th.as_tensor(finger_link.get_position_orientation()[0], dtype=marker_pos.dtype)
+                        finger_records.append((finger_link, finger_pos, float(th.linalg.norm(finger_pos - marker_pos))))
+                    if not finger_records:
+                        raise ValueError("missing_active_finger_links")
+                    selected_finger_record = None
+                    if force_finger_link:
+                        for finger_record in finger_records:
+                            finger_name = getattr(finger_record[0], "name", str(finger_record[0]))
+                            if force_finger_link == finger_name or force_finger_link in finger_name:
+                                selected_finger_record = finger_record
+                                break
+                    finger_link, finger_pos, finger_dist = selected_finger_record or min(
+                        finger_records,
+                        key=lambda item: item[2],
+                    )
+
+                    active_eef_pos, active_eef_quat = robot.get_eef_pose(active_arm)
+                    hold_pos, hold_quat = robot.get_eef_pose(hold_arm)
+                    active_eef_pos = th.as_tensor(active_eef_pos, dtype=marker_pos.dtype)
+                    active_eef_quat = th.as_tensor(active_eef_quat, dtype=marker_pos.dtype)
+                    hold_pos = th.as_tensor(hold_pos, dtype=marker_pos.dtype)
+                    hold_quat = th.as_tensor(hold_quat, dtype=marker_pos.dtype)
+                    hold_rot = T.quat2mat(hold_quat)
+
+                    active_target_pos = th.as_tensor(
+                        target_pos[active_link_name],
+                        dtype=marker_pos.dtype,
+                        device=marker_pos.device,
+                    )
+                    eef_to_finger_offset = active_eef_pos - finger_pos
+                    desired_finger_pos = active_target_pos - eef_to_finger_offset
+
+                    hold_orientation_mode = os.environ.get(
+                        "MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_HOLD_ORIENTATION_MODE",
+                        "current_hold",
+                    ).strip().lower()
+                    if hold_orientation_mode == "current_hold":
+                        desired_hold_quat = hold_quat
+                    elif hold_orientation_mode == "target_hold":
+                        desired_hold_quat = th.as_tensor(
+                            target_quat[hold_link_name],
+                            dtype=marker_pos.dtype,
+                            device=marker_pos.device,
+                        )
+                    else:
+                        raise ValueError(
+                            "MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_HOLD_ORIENTATION_MODE "
+                            "only supports current_hold/target_hold"
+                        )
+                    desired_hold_rot = T.quat2mat(desired_hold_quat)
+
+                    marker_local_in_hold = hold_rot.T @ (marker_pos - hold_pos)
+                    marker_rot_in_hold = hold_rot.T @ marker_rot
+                    desired_marker_rot = desired_hold_rot @ marker_rot_in_hold
+                    desired_marker_pos = desired_finger_pos - desired_marker_rot @ marker_local_offset
+                    desired_hold_pos = desired_marker_pos - desired_hold_rot @ marker_local_in_hold
+
+                    max_hold_delta = float(
+                        os.environ.get("MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_MAX_HOLD_DELTA", "0.0") or 0.0
+                    )
+                    hold_delta = desired_hold_pos - hold_pos
+                    hold_delta_norm = float(th.linalg.norm(hold_delta))
+                    hold_delta_clamped = False
+                    if max_hold_delta > 0.0 and hold_delta_norm > max_hold_delta:
+                        desired_hold_pos = hold_pos + hold_delta * (max_hold_delta / hold_delta_norm)
+                        hold_delta_clamped = True
+
+                    active_orientation_mode = os.environ.get(
+                        "MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_ACTIVE_ORIENTATION_MODE",
+                        "keep",
+                    ).strip().lower()
+                    if active_orientation_mode == "current_eef":
+                        target_quat[active_link_name] = active_eef_quat.to(
+                            dtype=target_quat[active_link_name].dtype,
+                            device=target_quat[active_link_name].device,
+                        )
+                    elif active_orientation_mode not in ("", "keep"):
+                        raise ValueError(
+                            "MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_ACTIVE_ORIENTATION_MODE "
+                            "only supports keep/current_eef"
+                        )
+
+                    original_hold_pos = target_pos[hold_link_name]
+                    original_hold_quat = target_quat[hold_link_name]
+                    target_pos[hold_link_name] = desired_hold_pos.to(
+                        dtype=original_hold_pos.dtype,
+                        device=original_hold_pos.device,
+                    )
+                    target_quat[hold_link_name] = desired_hold_quat.to(
+                        dtype=original_hold_quat.dtype,
+                        device=original_hold_quat.device,
+                    )
+
+                    record.update(
+                        {
+                            "applied": True,
+                            "active_arm": active_arm,
+                            "hold_arm": hold_arm,
+                            "active_link": active_link_name,
+                            "hold_link": hold_link_name,
+                            "finger_link": getattr(finger_link, "name", str(finger_link)),
+                            "force_finger_link": force_finger_link or None,
+                            "finger_marker_dist_before": finger_dist,
+                            "marker_pos": _debug_array_value(marker_pos),
+                            "marker_quat": _debug_array_value(marker_quat),
+                            "marker_local_offset": _debug_array_value(marker_local_offset),
+                            "active_eef_pos": _debug_array_value(active_eef_pos),
+                            "active_target_pos": _debug_array_value(active_target_pos),
+                            "finger_pos": _debug_array_value(finger_pos),
+                            "eef_to_finger_offset": _debug_array_value(eef_to_finger_offset),
+                            "desired_finger_pos": _debug_array_value(desired_finger_pos),
+                            "hold_pos": _debug_array_value(hold_pos),
+                            "hold_quat": _debug_array_value(hold_quat),
+                            "marker_local_in_hold": _debug_array_value(marker_local_in_hold),
+                            "marker_rot_in_hold": _debug_array_value(marker_rot_in_hold),
+                            "desired_marker_pos": _debug_array_value(desired_marker_pos),
+                            "desired_hold_pos": _debug_array_value(target_pos[hold_link_name]),
+                            "desired_hold_quat": _debug_array_value(target_quat[hold_link_name]),
+                            "original_hold_target_pos": _debug_array_value(original_hold_pos),
+                            "original_hold_target_quat": _debug_array_value(original_hold_quat),
+                            "hold_orientation_mode": hold_orientation_mode,
+                            "active_orientation_mode": active_orientation_mode,
+                            "hold_delta_norm": hold_delta_norm,
+                            "max_hold_delta": max_hold_delta,
+                            "hold_delta_clamped": hold_delta_clamped,
+                        }
+                    )
+                except Exception as e:
+                    record.update(
+                        {
+                            "applied": False,
+                            "reason": f"joint_staging_error:{type(e).__name__}: {e}",
+                        }
+                    )
+            phase_logs[env.execution_phase_ind].setdefault("toggle_marker_joint_staging_targets", []).append(record)
+            print("[MOMAGEN_TOGGLE_MARKER_JOINT_STAGING_TARGETS] " + json.dumps(record, default=str), flush=True)
+
         def _maybe_apply_toggle_marker_replay_correction(pose, replay_step=None):
             """Diagnostic replay-time correction that keeps the active finger aimed at the live toggle marker.
 
@@ -3074,11 +3517,16 @@ class WaypointTrajectory(object):
             wholebody_arm_mp_enabled,
             emb_sel,
             timing_stage="after_arm_replay",
+            status_out=None,
         ):
             """Env-gated DEFAULT whole-body replan that moves the press finger into the live marker basin."""
             if not bool(int(os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN", "0") or 0)):
                 return local_env_step
             log_key = "toggle_marker_contact_prealign"
+
+            def _set_status(**kwargs):
+                if status_out is not None:
+                    status_out.update(kwargs)
 
             def _record(record):
                 record.setdefault("enabled", True)
@@ -3090,7 +3538,7 @@ class WaypointTrajectory(object):
             if not (
                 execute_live_q_to_action
                 and wholebody_arm_mp_enabled
-                and emb_sel == CuRoboEmbodimentSelection.DEFAULT
+                and is_default_embodiment(emb_sel)
             ):
                 _record(
                     {
@@ -3101,6 +3549,7 @@ class WaypointTrajectory(object):
                         "emb_sel": str(emb_sel),
                     }
                 )
+                _set_status(attempted=False, passed=None, reason="requires_default_wholebody_live_q_to_action")
                 return local_env_step
             min_phase = int(os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_MIN_PHASE", "0") or 0)
             max_phase = int(os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_MAX_PHASE", "999999") or 999999)
@@ -3113,9 +3562,11 @@ class WaypointTrajectory(object):
                         "max_phase": max_phase,
                     }
                 )
+                _set_status(attempted=False, passed=None, reason="phase_out_of_range")
                 return local_env_step
             if ref_obj is None or object_states.ToggledOn not in getattr(ref_obj, "states", {}):
                 _record({"applied": False, "reason": "missing_toggle_ref_obj"})
+                _set_status(attempted=False, passed=False, reason="missing_toggle_ref_obj")
                 return local_env_step
 
             desired_timing = (
@@ -3123,6 +3574,7 @@ class WaypointTrajectory(object):
                 or "after_arm_replay"
             ).strip().lower()
             if desired_timing != timing_stage:
+                _set_status(attempted=False, passed=None, reason="timing_stage_mismatch")
                 return local_env_step
 
             try:
@@ -3130,6 +3582,7 @@ class WaypointTrajectory(object):
                 marker = getattr(toggle_state, "visual_marker", None)
                 if marker is None:
                     _record({"applied": False, "reason": "missing_visual_marker"})
+                    _set_status(attempted=False, passed=False, reason="missing_visual_marker")
                     return local_env_step
                 marker_pos_raw, marker_quat_raw = marker.get_position_orientation()
                 marker_pos = th.as_tensor(marker_pos_raw, dtype=th.float32)
@@ -3137,6 +3590,7 @@ class WaypointTrajectory(object):
                 marker_rot = th.as_tensor(T.quat2mat(marker_quat), dtype=marker_pos.dtype)
             except Exception as e:
                 _record({"applied": False, "reason": f"marker_error:{type(e).__name__}: {e}"})
+                _set_status(attempted=False, passed=False, reason=f"marker_error:{type(e).__name__}: {e}")
                 return local_env_step
 
             def _parse_vec3(env_name, default_value):
@@ -3171,6 +3625,7 @@ class WaypointTrajectory(object):
                 )
             if not active_arms:
                 _record({"applied": False, "reason": "no_active_arms"})
+                _set_status(attempted=False, passed=False, reason="no_active_arms")
                 return local_env_step
 
             def _select_finger(arm_name):
@@ -3189,7 +3644,9 @@ class WaypointTrajectory(object):
                 selected = min(finger_records, key=lambda item: item[2])
                 return selected[0], selected[1], finger_records
 
-            def _arm_snapshot(arm_name, finger_link=None):
+            def _arm_snapshot(arm_name, finger_link=None, snapshot_marker_pos=None, snapshot_marker_rot=None):
+                marker_pos_for_snapshot = marker_pos if snapshot_marker_pos is None else snapshot_marker_pos
+                marker_rot_for_snapshot = marker_rot if snapshot_marker_rot is None else snapshot_marker_rot
                 eef_pos = th.as_tensor(robot.eef_links[arm_name].get_position_orientation()[0], dtype=marker_pos.dtype)
                 eef_quat = th.as_tensor(robot.eef_links[arm_name].get_position_orientation()[1], dtype=marker_pos.dtype)
                 snapshot = {
@@ -3199,13 +3656,13 @@ class WaypointTrajectory(object):
                 }
                 if finger_link is not None:
                     finger_pos = th.as_tensor(finger_link.get_position_orientation()[0], dtype=marker_pos.dtype)
-                    marker_local = marker_rot.T @ (finger_pos - marker_pos)
+                    marker_local = marker_rot_for_snapshot.T @ (finger_pos - marker_pos_for_snapshot)
                     source_residual = marker_local - marker_local_offset
                     snapshot.update(
                         {
                             "finger_link": getattr(finger_link, "name", str(finger_link)),
                             "finger_pos": _debug_array_value(finger_pos),
-                            "finger_marker_dist": float(th.linalg.norm(finger_pos - marker_pos)),
+                            "finger_marker_dist": float(th.linalg.norm(finger_pos - marker_pos_for_snapshot)),
                             "finger_marker_local": _debug_array_value(marker_local),
                             "source_residual_marker_local": _debug_array_value(source_residual),
                             "source_residual_norm": float(th.linalg.norm(source_residual)),
@@ -3255,10 +3712,20 @@ class WaypointTrajectory(object):
                         "applied": True,
                         "eef_link": eef_link_name,
                         "finger_link": getattr(finger_link, "name", str(finger_link)),
+                        "finger_body_name": getattr(
+                            finger_link,
+                            "body_name",
+                            str(getattr(finger_link, "name", finger_link)).split(":")[-1],
+                        ),
                         "force_finger_link": force_finger_link or None,
                         "all_finger_link_dists": [
                             {
                                 "link": getattr(record_finger_link, "name", str(record_finger_link)),
+                                "body_name": getattr(
+                                    record_finger_link,
+                                    "body_name",
+                                    str(getattr(record_finger_link, "name", record_finger_link)).split(":")[-1],
+                                ),
                                 "prim_path": getattr(record_finger_link, "prim_path", None),
                                 "dist": record_dist,
                                 "selected": record_finger_link is finger_link,
@@ -3303,7 +3770,9 @@ class WaypointTrajectory(object):
                         "hold_records": hold_records,
                     }
                 )
+                _set_status(attempted=False, passed=False, reason="no_targets")
                 return local_env_step
+            _set_status(attempted=True, passed=False, reason="started")
 
             planning_target_pos = {k: th.stack([v for _ in range(batch_size)]) for k, v in target_pos.items()}
             planning_target_quat = {k: th.stack([v for _ in range(batch_size)]) for k, v in target_quat.items()}
@@ -3393,6 +3862,7 @@ class WaypointTrajectory(object):
                 "live_attached_obj_scale": live_attached_obj_scale or {},
                 "live_attached_grasp_action": live_attached_grasp_action,
                 "live_attached_error": live_attached_error,
+                "attached_obj_options": _attached_payload_options(attached_for_plan),
             }
             _record(plan_record)
 
@@ -3420,6 +3890,7 @@ class WaypointTrajectory(object):
                         success_ratio=1.0 / batch_size,
                         attached_obj=attached_for_plan,
                         attached_obj_scale=attached_scale_for_plan,
+                        attached_obj_options=_attached_payload_options(attached_for_plan),
                         motion_constraint=motion_constraint,
                         self_collision_check=self_collision_check,
                         emb_sel=emb_sel,
@@ -3439,12 +3910,12 @@ class WaypointTrajectory(object):
                         "planning_time": round(time.time() - planning_start, 2),
                     }
                 )
+                _set_status(attempted=True, passed=False, reason=f"plan_exception:{type(e).__name__}: {e}")
                 return local_env_step
 
             successes = mp_results[0].success
             success_idx = th.where(successes)[0].cpu()
-            status_obj = getattr(mp_results[0], "status", None)
-            status_value = getattr(status_obj, "value", str(status_obj))
+            status_value = _mp_status_value(mp_results[0])
             _record(
                 {
                     "applied": bool(len(success_idx) > 0),
@@ -3455,6 +3926,263 @@ class WaypointTrajectory(object):
                     "planning_time": round(time.time() - planning_start, 2),
                 }
             )
+            planned_fk_admission_enabled = bool(
+                int(os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_PLANNED_FK_ADMISSION", "1") or 1)
+            )
+            planned_fk_max_eef_pos_err = float(
+                os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_PLANNED_FK_MAX_EEF_POS_ERR", "0.05")
+                or 0.05
+            )
+            planned_fk_max_finger_target_err = float(
+                os.environ.get(
+                    "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_MAX_FINGER_TARGET_ERR",
+                    os.environ.get(
+                        "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_PLANNED_FK_MAX_FINGER_TARGET_ERR",
+                        "0.05",
+                    ),
+                )
+                or 0.05
+            )
+            def _planned_fk_link_pose(robot_state, link_name):
+                link_key = str(link_name).split(":")[-1]
+                return robot_state.link_poses.get(link_key) or robot_state.link_poses.get(link_name)
+
+            prealign_quality_enabled = bool(
+                int(os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_RANKING", "0") or 0)
+            )
+            prealign_quality_reject = bool(
+                int(os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_REJECT", "0") or 0)
+            )
+            prealign_quality_max_base_path = float(
+                os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_MAX_BASE_PATH_M", "0.35")
+                or 0.35
+            )
+            prealign_quality_max_base_yaw_path = float(
+                os.environ.get(
+                    "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_MAX_BASE_YAW_PATH_RAD",
+                    "0.78539816339",
+                )
+                or 0.78539816339
+            )
+            prealign_quality_max_trunk_path = float(
+                os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_MAX_TRUNK_PATH", "1.5")
+                or 1.5
+            )
+            prealign_quality_max_arm_path = float(
+                os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_MAX_ARM_PATH", "2.0")
+                or 2.0
+            )
+            prealign_quality_base_weight = float(
+                os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_BASE_WEIGHT", "4.0")
+                or 4.0
+            )
+            prealign_quality_yaw_weight = float(
+                os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_YAW_WEIGHT", "1.0")
+                or 1.0
+            )
+            prealign_quality_trunk_weight = float(
+                os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_TRUNK_WEIGHT", "1.0")
+                or 1.0
+            )
+            prealign_quality_arm_weight = float(
+                os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_CANDIDATE_QUALITY_ARM_WEIGHT", "1.0")
+                or 1.0
+            )
+
+            if planned_fk_admission_enabled and len(success_idx) > 0:
+                admission_record = {
+                    "enabled": True,
+                    "applied": True,
+                    "phase": int(env.execution_phase_ind),
+                    "timing_stage": timing_stage,
+                    "raw_success_idx": success_idx.tolist(),
+                    "accepted_success_idx": success_idx.tolist(),
+                    "max_eef_pos_err": planned_fk_max_eef_pos_err,
+                    "max_finger_target_err": planned_fk_max_finger_target_err,
+                    "target_links": list(target_pos.keys()),
+                    "active_finger_links": [
+                        record.get("finger_link") for record in prealign_records if record.get("applied")
+                    ],
+                    "active_finger_body_names": [
+                        record.get("finger_body_name") for record in prealign_records if record.get("applied")
+                    ],
+                    "candidate_quality_ranking": {
+                        "enabled": prealign_quality_enabled,
+                        "applied": bool(prealign_quality_enabled and is_default_embodiment(emb_sel)),
+                        "reject": prealign_quality_reject,
+                        "thresholds": {
+                            "max_base_path_m": prealign_quality_max_base_path,
+                            "max_base_yaw_path_rad": prealign_quality_max_base_yaw_path,
+                            "max_trunk_path": prealign_quality_max_trunk_path,
+                            "max_arm_path": prealign_quality_max_arm_path,
+                        },
+                        "weights": {
+                            "base": prealign_quality_base_weight,
+                            "yaw": prealign_quality_yaw_weight,
+                            "trunk": prealign_quality_trunk_weight,
+                            "arm": prealign_quality_arm_weight,
+                        },
+                    },
+                    "candidates": [],
+                }
+                accepted_success_idx = []
+                try:
+                    for raw_success_idx in success_idx.tolist():
+                        path = traj_paths[int(raw_success_idx)]
+                        robot_state = env.cmg.mg[emb_sel].kinematics.compute_kinematics(path)
+                        candidate_record = {
+                            "success_idx": int(raw_success_idx),
+                            "per_eef_link": {},
+                            "per_active_finger": {},
+                            "failed_checks": [],
+                            "passed": True,
+                        }
+                        for link_name, target_pos_value in target_pos.items():
+                            planned_link_pose = robot_state.link_poses.get(link_name)
+                            planned_pos_np = (
+                                None if planned_link_pose is None else _debug_to_np(planned_link_pose.position[-1])
+                            )
+                            target_pos_np = _debug_to_np(target_pos_value)
+                            link_record = {
+                                "target_pos": None if target_pos_np is None else target_pos_np.tolist(),
+                                "planned_pos": None if planned_pos_np is None else planned_pos_np.tolist(),
+                            }
+                            if (
+                                target_pos_np is None
+                                or planned_pos_np is None
+                                or not bool(np.isfinite(target_pos_np).all())
+                                or not bool(np.isfinite(planned_pos_np).all())
+                            ):
+                                link_record["error"] = "nonfinite_or_missing_position"
+                                candidate_record["failed_checks"].append(f"{link_name}:eef_missing_or_nonfinite")
+                            else:
+                                pos_err = float(np.linalg.norm(planned_pos_np - target_pos_np))
+                                link_record["planned_to_target_pos_dist"] = pos_err
+                                if pos_err > planned_fk_max_eef_pos_err:
+                                    candidate_record["failed_checks"].append(f"{link_name}:eef_pos_err")
+                            candidate_record["per_eef_link"][link_name] = link_record
+                        for record in prealign_records:
+                            if not record.get("applied"):
+                                continue
+                            finger_link_name = record.get("finger_link")
+                            finger_body_name = record.get("finger_body_name") or str(finger_link_name).split(":")[-1]
+                            desired_finger_pos_np = _debug_to_np(record.get("desired_finger_pos", {}).get("value"))
+                            planned_finger_pose = _planned_fk_link_pose(robot_state, finger_body_name)
+                            planned_finger_pos_np = (
+                                None
+                                if planned_finger_pose is None
+                                else _debug_to_np(planned_finger_pose.position[-1])
+                            )
+                            finger_record = {
+                                "arm": record.get("arm"),
+                                "link": finger_link_name,
+                                "body_name": finger_body_name,
+                                "desired_finger_pos": None
+                                if desired_finger_pos_np is None
+                                else desired_finger_pos_np.tolist(),
+                                "planned_finger_pos": None
+                                if planned_finger_pos_np is None
+                                else planned_finger_pos_np.tolist(),
+                            }
+                            if (
+                                desired_finger_pos_np is None
+                                or planned_finger_pos_np is None
+                                or not bool(np.isfinite(desired_finger_pos_np).all())
+                                or not bool(np.isfinite(planned_finger_pos_np).all())
+                            ):
+                                finger_record["error"] = "nonfinite_or_missing_position"
+                                candidate_record["failed_checks"].append(
+                                    f"{finger_body_name}:finger_missing_or_nonfinite"
+                                )
+                            else:
+                                finger_err = float(np.linalg.norm(planned_finger_pos_np - desired_finger_pos_np))
+                                finger_record["planned_to_desired_finger_pos_dist"] = finger_err
+                                if finger_err > planned_fk_max_finger_target_err:
+                                    candidate_record["failed_checks"].append(f"{finger_body_name}:finger_target_err")
+                            candidate_record["per_active_finger"][finger_body_name] = finger_record
+                        if prealign_quality_enabled and is_default_embodiment(emb_sel):
+                            try:
+                                q_path_for_quality = env.cmg.path_to_joint_trajectory(
+                                    path,
+                                    get_full_js=True,
+                                    emb_sel=emb_sel,
+                                )
+                                quality_by_group = _joint_path_quality_by_group(robot, q_path_for_quality)
+                                base_quality = quality_by_group.get("base", {})
+                                trunk_quality = quality_by_group.get("trunk", {})
+                                arm_left_quality = quality_by_group.get("arm_left", {})
+                                arm_right_quality = quality_by_group.get("arm_right", {})
+                                quality_failures = []
+                                base_path = float(base_quality.get("path_m", 0.0) or 0.0)
+                                base_yaw_path = float(base_quality.get("path_rad", 0.0) or 0.0)
+                                trunk_path = float(trunk_quality.get("path", 0.0) or 0.0)
+                                arm_left_path = float(arm_left_quality.get("path", 0.0) or 0.0)
+                                arm_right_path = float(arm_right_quality.get("path", 0.0) or 0.0)
+                                if base_path > prealign_quality_max_base_path:
+                                    quality_failures.append("base_path")
+                                if base_yaw_path > prealign_quality_max_base_yaw_path:
+                                    quality_failures.append("base_yaw_path")
+                                if trunk_path > prealign_quality_max_trunk_path:
+                                    quality_failures.append("trunk_path")
+                                if max(arm_left_path, arm_right_path) > prealign_quality_max_arm_path:
+                                    quality_failures.append("arm_path")
+                                quality_score = (
+                                    prealign_quality_base_weight * base_path
+                                    + prealign_quality_yaw_weight * base_yaw_path
+                                    + prealign_quality_trunk_weight * trunk_path
+                                    + prealign_quality_arm_weight * (arm_left_path + arm_right_path)
+                                )
+                                candidate_record["candidate_quality"] = {
+                                    "applied": True,
+                                    "score": float(quality_score),
+                                    "failures": quality_failures,
+                                    "by_group": quality_by_group,
+                                }
+                                if prealign_quality_reject and quality_failures:
+                                    candidate_record["failed_checks"].extend(
+                                        [f"candidate_quality_{name}" for name in quality_failures]
+                                    )
+                            except Exception as exc:
+                                candidate_record["candidate_quality"] = {
+                                    "applied": False,
+                                    "error": f"{type(exc).__name__}: {exc}",
+                                }
+                                if prealign_quality_reject:
+                                    candidate_record["failed_checks"].append("candidate_quality_error")
+                        candidate_record["passed"] = len(candidate_record["failed_checks"]) == 0
+                        if candidate_record["passed"]:
+                            accepted_success_idx.append(int(raw_success_idx))
+                        admission_record["candidates"].append(candidate_record)
+                    if prealign_quality_enabled and accepted_success_idx:
+                        accepted_candidate_records = [
+                            candidate
+                            for candidate in admission_record["candidates"]
+                            if int(candidate.get("success_idx", -1)) in set(accepted_success_idx)
+                        ]
+                        accepted_candidate_records.sort(
+                            key=lambda candidate: float(
+                                candidate.get("candidate_quality", {}).get("score", float("inf"))
+                            )
+                        )
+                        accepted_success_idx = [
+                            int(candidate["success_idx"]) for candidate in accepted_candidate_records
+                        ]
+                        admission_record["candidate_quality_ranking"][
+                            "sorted_accepted_success_idx"
+                        ] = accepted_success_idx
+                    admission_record["accepted_success_idx"] = accepted_success_idx
+                    success_idx = th.as_tensor(accepted_success_idx, dtype=th.long)
+                except Exception as exc:
+                    admission_record["error"] = f"{type(exc).__name__}: {exc}"
+                    admission_record["accepted_success_idx"] = []
+                    success_idx = th.as_tensor([], dtype=th.long)
+                _record(
+                    {
+                        "applied": bool(len(success_idx) > 0),
+                        "stage": "planned_fk_admission",
+                        **admission_record,
+                    }
+                )
             diag_variants_raw = os.environ.get(
                 "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_DIAG_VARIANTS", ""
             ).strip()
@@ -3531,6 +4259,7 @@ class WaypointTrajectory(object):
                                 success_ratio=1.0 / batch_size,
                                 attached_obj=diag_attached,
                                 attached_obj_scale=diag_attached_scale,
+                                attached_obj_options=_attached_payload_options(diag_attached),
                                 motion_constraint=motion_constraint,
                                 self_collision_check=diag_self_collision,
                                 emb_sel=emb_sel,
@@ -3583,6 +4312,7 @@ class WaypointTrajectory(object):
                     }
                 )
             if len(success_idx) == 0:
+                _set_status(attempted=True, passed=False, reason="no_admitted_plan")
                 return local_env_step
 
             q_traj = env.cmg.path_to_joint_trajectory(
@@ -3664,23 +4394,100 @@ class WaypointTrajectory(object):
                         }
                     )
 
+            try:
+                fresh_marker_pos_raw, fresh_marker_quat_raw = marker.get_position_orientation()
+                fresh_marker_pos = th.as_tensor(fresh_marker_pos_raw, dtype=marker_pos.dtype)
+                fresh_marker_quat = th.as_tensor(fresh_marker_quat_raw, dtype=marker_pos.dtype)
+                fresh_marker_rot = th.as_tensor(T.quat2mat(fresh_marker_quat), dtype=marker_pos.dtype)
+                fresh_ref_obj_pos_raw, fresh_ref_obj_quat_raw = ref_obj.get_position_orientation()
+                fresh_ref_obj_pos = th.as_tensor(fresh_ref_obj_pos_raw, dtype=marker_pos.dtype)
+                fresh_ref_obj_quat = th.as_tensor(fresh_ref_obj_quat_raw, dtype=marker_pos.dtype)
+                fresh_marker_error = None
+            except Exception as e:
+                fresh_marker_pos = marker_pos
+                fresh_marker_quat = marker_quat
+                fresh_marker_rot = marker_rot
+                fresh_ref_obj_pos = None
+                fresh_ref_obj_quat = None
+                fresh_marker_error = f"{type(e).__name__}: {e}"
             after_records = []
+            hard_validation_enabled = bool(
+                int(os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_HARD_VALIDATION", "1") or 1)
+            )
+            hard_validation_max_finger_target_err = float(
+                os.environ.get(
+                    "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_HARD_VALIDATION_MAX_FINGER_TARGET_ERR",
+                    os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_MAX_FINGER_TARGET_ERR", "0.05"),
+                )
+                or 0.05
+            )
+            hard_validation_record = {
+                "enabled": hard_validation_enabled,
+                "passed": True,
+                "max_finger_target_err": hard_validation_max_finger_target_err,
+                "per_active_finger": {},
+            }
             for record in prealign_records:
                 if not record.get("applied"):
                     continue
                 arm_name = record["arm"]
                 finger_link, _, _ = _select_finger(arm_name)
-                after_records.append(_arm_snapshot(arm_name, finger_link=finger_link))
+                stale_snapshot = _arm_snapshot(arm_name, finger_link=finger_link)
+                fresh_snapshot = _arm_snapshot(
+                    arm_name,
+                    finger_link=finger_link,
+                    snapshot_marker_pos=fresh_marker_pos,
+                    snapshot_marker_rot=fresh_marker_rot,
+                )
+                fresh_snapshot["stale_marker_snapshot"] = stale_snapshot
+                after_records.append(fresh_snapshot)
+                if hard_validation_enabled:
+                    fresh_finger_pos = th.as_tensor(
+                        finger_link.get_position_orientation()[0], dtype=fresh_marker_pos.dtype
+                    )
+                    fresh_desired_finger_pos = fresh_marker_pos + fresh_marker_rot @ marker_local_offset + world_offset
+                    fresh_desired_finger_pos = fresh_desired_finger_pos + th.tensor(
+                        [0.0, 0.0, approach_z],
+                        dtype=fresh_desired_finger_pos.dtype,
+                        device=fresh_desired_finger_pos.device,
+                    )
+                    finger_target_err = float(th.linalg.norm(fresh_finger_pos - fresh_desired_finger_pos))
+                    finger_passed = finger_target_err <= hard_validation_max_finger_target_err
+                    hard_validation_record["per_active_finger"][getattr(finger_link, "name", str(finger_link))] = {
+                        "arm": arm_name,
+                        "finger_pos": _debug_array_value(fresh_finger_pos),
+                        "fresh_desired_finger_pos": _debug_array_value(fresh_desired_finger_pos),
+                        "finger_to_fresh_target_pos_dist": finger_target_err,
+                        "passed": bool(finger_passed),
+                    }
+                    if not finger_passed:
+                        hard_validation_record["passed"] = False
+            if not hard_validation_enabled:
+                hard_validation_record["passed"] = None
             _record(
                 {
-                    "applied": True,
+                    "applied": bool(hard_validation_record["passed"] is not False),
                     "stage": "exec_done",
                     "q_traj_len": int(q_traj.shape[0]),
                     "execution_time": round(time.time() - execution_start, 2),
+                    "plan_marker_pos": _debug_array_value(marker_pos),
+                    "plan_marker_quat": _debug_array_value(marker_quat),
+                    "fresh_marker_pos": _debug_array_value(fresh_marker_pos),
+                    "fresh_marker_quat": _debug_array_value(fresh_marker_quat),
+                    "fresh_marker_delta_world": _debug_array_value(fresh_marker_pos - marker_pos),
+                    "fresh_marker_drift_from_plan": float(th.linalg.norm(fresh_marker_pos - marker_pos)),
+                    "fresh_ref_obj_pos": _debug_array_value(fresh_ref_obj_pos),
+                    "fresh_ref_obj_quat": _debug_array_value(fresh_ref_obj_quat),
+                    "fresh_marker_error": fresh_marker_error,
                     "after_records": after_records,
+                    "hard_validation": hard_validation_record,
                     "success": {k: bool(v) for k, v in success.items()},
                 }
             )
+            if hard_validation_record["passed"] is False:
+                _set_status(attempted=True, passed=False, reason="hard_validation_failed")
+            else:
+                _set_status(attempted=True, passed=True, reason="passed")
             return local_env_step
 
         def _maybe_execute_toggle_marker_post_mp_press(
@@ -3706,7 +4513,7 @@ class WaypointTrajectory(object):
             if not (
                 execute_live_q_to_action
                 and wholebody_arm_mp_enabled
-                and emb_sel == CuRoboEmbodimentSelection.DEFAULT
+                and is_default_embodiment(emb_sel)
             ):
                 return local_env_step
             min_phase = int(os.environ.get("MOMAGEN_TOGGLE_MARKER_POST_MP_PRESS_MIN_PHASE", "0") or 0)
@@ -4445,33 +5252,6 @@ class WaypointTrajectory(object):
                             finger_paths.discard(None)
                             overlap_probe_pos_np = marker_pos_np
                             overlap_probe_local_offset_np = None
-                            overlap_probe_offset_raw = os.environ.get(
-                                "OMNIGIBSON_TOGGLEDON_OVERLAP_SPHERE_LOCAL_OFFSET", ""
-                            ).strip()
-                            overlap_probe_obj_filter = os.environ.get(
-                                "OMNIGIBSON_TOGGLEDON_OVERLAP_OBJECT_NAME", ""
-                            ).strip()
-                            if overlap_probe_offset_raw and (
-                                not overlap_probe_obj_filter
-                                or overlap_probe_obj_filter == getattr(obj, "name", "")
-                                or overlap_probe_obj_filter in getattr(obj, "name", "")
-                            ):
-                                overlap_probe_local_offset_values = [
-                                    float(value.strip())
-                                    for value in overlap_probe_offset_raw.split(",")
-                                    if value.strip()
-                                ]
-                                if len(overlap_probe_local_offset_values) != 3:
-                                    raise ValueError(
-                                        "OMNIGIBSON_TOGGLEDON_OVERLAP_SPHERE_LOCAL_OFFSET must contain "
-                                        "3 comma-separated floats"
-                                    )
-                                overlap_probe_local_offset_np = np.asarray(
-                                    overlap_probe_local_offset_values, dtype=float
-                                )
-                                if marker_quat is not None:
-                                    marker_rot_np = np.asarray(T.quat2mat(marker_quat), dtype=float)
-                                    overlap_probe_pos_np = marker_pos_np + marker_rot_np @ overlap_probe_local_offset_np
 
                             def _probe_overlap_radius(radius):
                                 hits = []
@@ -6703,6 +7483,10 @@ class WaypointTrajectory(object):
                                     attached_obj_options[link_name] = {
                                         "ee_pose": (candidate_link_pos, candidate_link_quat),
                                     }
+                            attached_obj_options = _attached_payload_options(
+                                probe_attached_obj,
+                                base_options=attached_obj_options,
+                            )
                         mp_probe = compute_trajectories_fn(
                             target_pos=target_pos,
                             target_quat=target_quat,
@@ -7653,6 +8437,10 @@ class WaypointTrajectory(object):
                                     attached_obj_options[link_name] = {
                                         "ee_pose": (candidate_link_pos, candidate_link_quat),
                                     }
+                            attached_obj_options = _attached_payload_options(
+                                attached_obj,
+                                base_options=attached_obj_options,
+                            )
                             if attached_obj_options:
                                 try:
                                     candidate_attached_result = originals["check_collisions"](
@@ -8333,9 +9121,62 @@ class WaypointTrajectory(object):
                 wholebody_phase_in_range = bool(
                     wholebody_min_phase <= int(env.execution_phase_ind) <= wholebody_max_phase
                 )
+                requested_main_ee_link = None
+                main_ee_link_by_phase_raw = os.environ.get("MOMAGEN_ARM_MP_MAIN_EE_LINK_BY_PHASE", "").strip()
+                main_ee_link_parse_errors = []
+                if main_ee_link_by_phase_raw:
+                    phase_ind = int(env.execution_phase_ind)
+                    for raw_entry in main_ee_link_by_phase_raw.replace(";", ",").split(","):
+                        entry = raw_entry.strip()
+                        if not entry:
+                            continue
+                        if ":" not in entry:
+                            main_ee_link_parse_errors.append({"entry": entry, "reason": "missing_colon"})
+                            continue
+                        phase_spec, link_name = [part.strip() for part in entry.split(":", 1)]
+                        if not phase_spec or not link_name:
+                            main_ee_link_parse_errors.append({"entry": entry, "reason": "empty_phase_or_link"})
+                            continue
+                        try:
+                            if "-" in phase_spec:
+                                phase_start_raw, phase_end_raw = [part.strip() for part in phase_spec.split("-", 1)]
+                                phase_start = int(phase_start_raw)
+                                phase_end = int(phase_end_raw)
+                            else:
+                                phase_start = phase_end = int(phase_spec)
+                        except ValueError:
+                            main_ee_link_parse_errors.append({"entry": entry, "reason": "invalid_phase"})
+                            continue
+                        if phase_start <= phase_ind <= phase_end:
+                            requested_main_ee_link = link_name
+                    phase_logs[env.execution_phase_ind].setdefault("arm_mp_main_ee_link_by_phase", []).append(
+                        {
+                            "enabled": True,
+                            "phase": int(env.execution_phase_ind),
+                            "raw": main_ee_link_by_phase_raw,
+                            "selected_main_ee_link": requested_main_ee_link,
+                            "parse_errors": main_ee_link_parse_errors,
+                        }
+                    )
                 if wholebody_arm_mp_enabled and wholebody_phase_in_range:
-                    if CuRoboEmbodimentSelection.DEFAULT in getattr(getattr(env, "cmg", None), "mg", {}):
+                    wholebody_emb_sel = CuRoboEmbodimentSelection.DEFAULT
+                    if requested_main_ee_link:
+                        wholebody_emb_sel = default_embodiment_variant(requested_main_ee_link)
+                    if wholebody_emb_sel in getattr(getattr(env, "cmg", None), "mg", {}):
+                        emb_sel = wholebody_emb_sel
+                    elif CuRoboEmbodimentSelection.DEFAULT in getattr(getattr(env, "cmg", None), "mg", {}):
                         emb_sel = CuRoboEmbodimentSelection.DEFAULT
+                        if requested_main_ee_link:
+                            phase_logs[env.execution_phase_ind].setdefault("arm_mp_main_ee_link_by_phase", []).append(
+                                {
+                                    "enabled": True,
+                                    "phase": int(env.execution_phase_ind),
+                                    "selected_main_ee_link": requested_main_ee_link,
+                                    "applied": False,
+                                    "reason": "variant_embodiment_unavailable",
+                                    "requested_emb_sel": str(wholebody_emb_sel),
+                                }
+                            )
                     else:
                         wholebody_arm_mp_enabled = False
                         phase_logs[env.execution_phase_ind].setdefault("wholebody_arm_mp", []).append(
@@ -8623,6 +9464,7 @@ class WaypointTrajectory(object):
                         del target_quat["left_eef_link"]
 
                 _maybe_apply_toggle_marker_target_correction(target_pos, target_quat)
+                _maybe_apply_toggle_marker_joint_staging_targets(target_pos, target_quat, emb_sel)
 
                 _log_manip_debug(
                     stage="after_source_base_preapproach",
@@ -8744,6 +9586,7 @@ class WaypointTrajectory(object):
                                     "attached_obj_keys": list((variant_kwargs.get("attached_obj") or {}).keys())
                                     if variant_kwargs.get("attached_obj")
                                     else [],
+                                    "attached_obj_options": variant_kwargs.get("attached_obj_options"),
                                     "skip_obstacle_update": bool(variant_kwargs.get("skip_obstacle_update", False)),
                                 }
                             )
@@ -8772,6 +9615,7 @@ class WaypointTrajectory(object):
                                     "attached_obj_keys": list((collision_kwargs.get("attached_obj") or {}).keys())
                                     if collision_kwargs.get("attached_obj")
                                     else [],
+                                    "attached_obj_options": collision_kwargs.get("attached_obj_options"),
                                     "self_collision_check": bool(collision_kwargs.get("self_collision_check", True)),
                                 }
                             )
@@ -8787,6 +9631,7 @@ class WaypointTrajectory(object):
                             dict(
                                 attached_obj=planning_attached_obj,
                                 attached_obj_scale=planning_attached_obj_scale,
+                                attached_obj_options=_attached_payload_options(planning_attached_obj),
                                 skip_obstacle_update=True,
                                 ik_only=True,
                                 ik_world_collision_check=True,
@@ -8797,6 +9642,7 @@ class WaypointTrajectory(object):
                             dict(
                                 attached_obj=planning_attached_obj,
                                 attached_obj_scale=planning_attached_obj_scale,
+                                attached_obj_options=_attached_payload_options(planning_attached_obj),
                                 skip_obstacle_update=True,
                                 ik_only=True,
                                 ik_world_collision_check=False,
@@ -8817,6 +9663,7 @@ class WaypointTrajectory(object):
                             dict(
                                 attached_obj=planning_attached_obj,
                                 attached_obj_scale=planning_attached_obj_scale,
+                                attached_obj_options=_attached_payload_options(planning_attached_obj),
                                 skip_obstacle_update=True,
                                 ik_only=False,
                                 self_collision_check=False,
@@ -8845,6 +9692,7 @@ class WaypointTrajectory(object):
                                 skip_obstacle_update=True,
                                 attached_obj=planning_attached_obj,
                                 attached_obj_scale=planning_attached_obj_scale,
+                                attached_obj_options=_attached_payload_options(planning_attached_obj),
                             ),
                         ),
                         (
@@ -8854,6 +9702,7 @@ class WaypointTrajectory(object):
                                 skip_obstacle_update=True,
                                 attached_obj=planning_attached_obj,
                                 attached_obj_scale=planning_attached_obj_scale,
+                                attached_obj_options=_attached_payload_options(planning_attached_obj),
                             ),
                         ),
                         (
@@ -8888,6 +9737,55 @@ class WaypointTrajectory(object):
                 arm_mp_target_quat = target_quat
                 arm_mp_primary_link_override = None
                 explicit_primary_link_override = os.environ.get("MOMAGEN_ARM_MP_PRIMARY_LINK_OVERRIDE", "")
+                primary_link_by_phase_raw = os.environ.get("MOMAGEN_ARM_MP_PRIMARY_LINK_BY_PHASE", "").strip()
+                if primary_link_by_phase_raw:
+                    phase_primary_link_override = None
+                    phase_primary_parse_errors = []
+                    phase_ind = int(env.execution_phase_ind)
+                    for raw_entry in primary_link_by_phase_raw.replace(";", ",").split(","):
+                        entry = raw_entry.strip()
+                        if not entry:
+                            continue
+                        if ":" not in entry:
+                            phase_primary_parse_errors.append({"entry": entry, "reason": "missing_colon"})
+                            continue
+                        phase_spec, link_name = [part.strip() for part in entry.split(":", 1)]
+                        if not phase_spec or not link_name:
+                            phase_primary_parse_errors.append({"entry": entry, "reason": "empty_phase_or_link"})
+                            continue
+                        try:
+                            if "-" in phase_spec:
+                                phase_start_raw, phase_end_raw = [part.strip() for part in phase_spec.split("-", 1)]
+                                phase_start = int(phase_start_raw)
+                                phase_end = int(phase_end_raw)
+                            else:
+                                phase_start = phase_end = int(phase_spec)
+                        except ValueError:
+                            phase_primary_parse_errors.append({"entry": entry, "reason": "invalid_phase"})
+                            continue
+                        if phase_start <= phase_ind <= phase_end:
+                            phase_primary_link_override = link_name
+                    phase_primary_record = {
+                        "enabled": True,
+                        "phase": phase_ind,
+                        "raw": primary_link_by_phase_raw,
+                        "selected_primary_link": phase_primary_link_override,
+                        "parse_errors": phase_primary_parse_errors,
+                    }
+                    if phase_primary_link_override is not None:
+                        explicit_primary_link_override = phase_primary_link_override
+                        phase_primary_record["applied_to_explicit_override"] = True
+                    else:
+                        phase_primary_record["applied_to_explicit_override"] = False
+                        phase_primary_record["reason"] = "no_matching_phase"
+                    phase_logs[env.execution_phase_ind].setdefault("arm_mp_primary_link_by_phase", []).append(
+                        phase_primary_record
+                    )
+                    print(
+                        "[MOMAGEN_ARM_MP_PRIMARY_LINK_BY_PHASE] "
+                        + json.dumps(phase_primary_record, default=str),
+                        flush=True,
+                    )
                 if explicit_primary_link_override:
                     explicit_primary_min_phase = int(os.environ.get("MOMAGEN_ARM_MP_PRIMARY_LINK_MIN_PHASE", "0") or 0)
                     explicit_primary_max_phase = int(
@@ -9050,7 +9948,7 @@ class WaypointTrajectory(object):
                     )
 
                 hold_base_as_primary = bool(int(os.environ.get("MOMAGEN_ARM_MP_HOLD_BASE_AS_PRIMARY", "0") or 0))
-                if hold_base_as_primary and emb_sel == CuRoboEmbodimentSelection.DEFAULT:
+                if hold_base_as_primary and is_default_embodiment(emb_sel):
                     hold_base_min_phase = int(os.environ.get("MOMAGEN_ARM_MP_HOLD_BASE_MIN_PHASE", "0") or 0)
                     hold_base_max_phase = int(
                         os.environ.get("MOMAGEN_ARM_MP_HOLD_BASE_MAX_PHASE", "999999") or 999999
@@ -9098,11 +9996,13 @@ class WaypointTrajectory(object):
                 num_tries = 3
                 arm_mp_trial = 0
                 default_emb_sel_fallback_used = False
+                attempted_emb_sels = {str(emb_sel)}
                 new_target_pos = copy.deepcopy(arm_mp_target_pos)
                 while True:
 
                     # Base condition
                     if arm_mp_trial > 0:
+                        status_value = _mp_status_value(mp_results[0])
                         # # Trying a hacky way to reduce the IK failure. Basically moving the robot base a bit towards the object.
                         # # This does not ensure collision-free motion
                         # if "IK Fail" in mp_results[0].status.value:
@@ -9132,7 +10032,7 @@ class WaypointTrajectory(object):
                         #         observations.append(obs)
                         #         datagen_infos.append(datagen_info)
 
-                        if ("IK Fail" in mp_results[0].status.value or "TrajOpt Fail" in mp_results[0].status.value) and env.retry_nav_on_arm_mp_failure:
+                        if ("IK Fail" in status_value or "TrajOpt Fail" in status_value) and env.retry_nav_on_arm_mp_failure:
                             results = dict(
                                 states=states,
                                 observations=observations,
@@ -9148,13 +10048,13 @@ class WaypointTrajectory(object):
                         if env.retry_nav_on_arm_mp_failure:
                             base_condition = arm_mp_trial == num_tries
                         else:
-                            base_condition = arm_mp_trial == num_tries or ("IK Fail" in mp_results[0].status.value)
+                            base_condition = arm_mp_trial == num_tries or ("IK Fail" in status_value)
 
                         if base_condition:
                             print("Arm MP failed after {} trials. Giving up.".format(num_tries))
-                            if "TrajOpt Fail" in mp_results[0].status.value:
+                            if "TrajOpt Fail" in status_value:
                                 env.err = "ArmMPTrajOptFailed"
-                            elif "IK Fail" in mp_results[0].status.value:
+                            elif "IK Fail" in status_value:
                                 env.err = "ArmMPIKFailed"
                             else:
                                 env.err = "ArmMPOtherFailed"
@@ -9182,7 +10082,7 @@ class WaypointTrajectory(object):
                     clamp_base_limits = bool(
                         int(os.environ.get("MOMAGEN_ARM_MP_CLAMP_BASE_JOINT_LIMITS", "0") or 0)
                     )
-                    if clamp_base_limits and emb_sel == CuRoboEmbodimentSelection.DEFAULT:
+                    if clamp_base_limits and is_default_embodiment(emb_sel):
                         clamp_min_phase = int(os.environ.get("MOMAGEN_ARM_MP_CLAMP_BASE_MIN_PHASE", "0") or 0)
                         clamp_max_phase = int(
                             os.environ.get("MOMAGEN_ARM_MP_CLAMP_BASE_MAX_PHASE", "999999") or 999999
@@ -9263,6 +10163,7 @@ class WaypointTrajectory(object):
                             success_ratio=1.0 / env.primitive._motion_generator.batch_size,
                             attached_obj=planning_attached_obj,
                             attached_obj_scale=planning_attached_obj_scale,
+                            attached_obj_options=_attached_payload_options(planning_attached_obj),
                             self_collision_check=effective_arm_mp_self_collision_check,
                             emb_sel=emb_sel,
                         )
@@ -9281,8 +10182,7 @@ class WaypointTrajectory(object):
                     print("Arm MP successes: ", successes)
                     success_idx = th.where(successes)[0].cpu()
 
-                    status_obj = getattr(mp_results[0], "status", None)
-                    status_value = getattr(status_obj, "value", str(status_obj))
+                    status_value = _mp_status_value(mp_results[0])
                     successes_np = _debug_to_np(successes)
                     arm_mp_status_record = {
                         "trial": int(arm_mp_trial),
@@ -9292,6 +10192,7 @@ class WaypointTrajectory(object):
                         "successes": None if successes_np is None else successes_np.astype(bool).tolist(),
                         "emb_sel": str(emb_sel),
                         "attached_obj_keys": list((planning_attached_obj or {}).keys()) if planning_attached_obj else [],
+                        "attached_obj_options": _attached_payload_options(planning_attached_obj),
                         "ignored_attached_obj_for_arm_mp": bool(ignore_attached_obj_for_arm_mp and attached_obj),
                         "self_collision_check": bool(effective_arm_mp_self_collision_check),
                         "self_collision_check_base_setting": bool(arm_mp_self_collision_check),
@@ -9303,18 +10204,656 @@ class WaypointTrajectory(object):
                     ] = arm_mp_status_record
                     print("[MOMAGEN_ARM_MP_STATUS] " + json.dumps(arm_mp_status_record, default=str), flush=True)
 
+                    planned_fk_failed_links_for_retry = []
+                    planned_fk_admission_enabled = bool(
+                        int(os.environ.get("MOMAGEN_COORDINATED_MULTI_EE_PLANNED_FK_ADMISSION", "1") or 1)
+                    )
+                    planned_fk_admission_min_phase = int(
+                        os.environ.get("MOMAGEN_COORDINATED_MULTI_EE_PLANNED_FK_ADMISSION_MIN_PHASE", "0") or 0
+                    )
+                    planned_fk_admission_max_phase = int(
+                        os.environ.get("MOMAGEN_COORDINATED_MULTI_EE_PLANNED_FK_ADMISSION_MAX_PHASE", "999999")
+                        or 999999
+                    )
+                    planned_fk_admission_max_pos_err = float(
+                        os.environ.get(
+                            "MOMAGEN_COORDINATED_MULTI_EE_PLANNED_FK_ADMISSION_MAX_POS_ERR",
+                            os.environ.get("MOMAGEN_COORDINATED_MULTI_EE_HARD_VALIDATION_MAX_POS_ERR", "0.05"),
+                        )
+                        or 0.05
+                    )
+                    planned_fk_admission_phase_in_range = (
+                        planned_fk_admission_min_phase
+                        <= int(env.execution_phase_ind)
+                        <= planned_fk_admission_max_phase
+                    )
+                    planned_fk_admission_target_links = [
+                        link_name
+                        for link_name in robot.eef_link_names.values()
+                        if link_name in arm_mp_target_pos and link_name in arm_mp_target_quat
+                    ]
+                    planned_fk_admission_applies = bool(
+                        planned_fk_admission_enabled
+                        and planned_fk_admission_phase_in_range
+                        and phase_type == "coordinated"
+                        and len(planned_fk_admission_target_links) >= 2
+                        and is_default_embodiment(emb_sel)
+                        and len(success_idx) > 0
+                    )
+                    if planned_fk_admission_enabled:
+                        planned_fk_admission_record = {
+                            "enabled": True,
+                            "applied": bool(planned_fk_admission_applies),
+                            "phase": int(env.execution_phase_ind),
+                            "phase_type": phase_type,
+                            "emb_sel": str(emb_sel),
+                            "trial": int(arm_mp_trial),
+                            "phase_in_range": bool(planned_fk_admission_phase_in_range),
+                            "min_phase": planned_fk_admission_min_phase,
+                            "max_phase": planned_fk_admission_max_phase,
+                            "max_pos_err": planned_fk_admission_max_pos_err,
+                            "target_links": planned_fk_admission_target_links,
+                            "raw_success_idx": success_idx.tolist(),
+                            "accepted_success_idx": success_idx.tolist(),
+                            "candidates": [],
+                        }
+                        planned_payload_collision_validation_enabled = bool(
+                            int(
+                                os.environ.get(
+                                    "MOMAGEN_COORDINATED_ATTACHED_PAYLOAD_PAIR_COLLISION_VALIDATION",
+                                    "1",
+                                )
+                                or 1
+                            )
+                        )
+                        planned_payload_collision_margin = float(
+                            os.environ.get(
+                                "MOMAGEN_COORDINATED_ATTACHED_PAYLOAD_PAIR_COLLISION_MARGIN",
+                                "0.0",
+                            )
+                            or 0.0
+                        )
+                        planned_payload_collision_pairs = (
+                            _attached_payload_link_pair_collision_pairs(robot, planning_attached_obj)
+                            if planned_payload_collision_validation_enabled
+                            else []
+                        )
+                        planned_fk_admission_record["attached_payload_pair_collision_validation"] = {
+                            "enabled": planned_payload_collision_validation_enabled,
+                            "applied": False,
+                            "margin": planned_payload_collision_margin,
+                            "num_pairs": len(planned_payload_collision_pairs),
+                        }
+                        if not planned_fk_admission_applies:
+                            if not planned_fk_admission_phase_in_range:
+                                planned_fk_admission_record["reason"] = "phase_out_of_range"
+                            elif phase_type != "coordinated":
+                                planned_fk_admission_record["reason"] = "phase_type_not_coordinated"
+                            elif len(planned_fk_admission_target_links) < 2:
+                                planned_fk_admission_record["reason"] = "fewer_than_two_eef_targets"
+                            elif not is_default_embodiment(emb_sel):
+                                planned_fk_admission_record["reason"] = "not_default_embodiment"
+                            elif len(success_idx) == 0:
+                                planned_fk_admission_record["reason"] = "no_raw_success"
+                        else:
+                            accepted_success_idx = []
+                            candidate_quality_enabled = bool(
+                                int(os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_RANKING", "0") or 0)
+                            )
+                            candidate_quality_reject = bool(
+                                int(os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_REJECT", "0") or 0)
+                            )
+                            candidate_quality_min_phase = int(
+                                os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_MIN_PHASE", "0") or 0
+                            )
+                            candidate_quality_max_phase = int(
+                                os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_MAX_PHASE", "999999") or 999999
+                            )
+                            candidate_quality_phase_in_range = (
+                                candidate_quality_min_phase
+                                <= int(env.execution_phase_ind)
+                                <= candidate_quality_max_phase
+                            )
+                            candidate_quality_applies = (
+                                candidate_quality_enabled
+                                and candidate_quality_phase_in_range
+                                and is_default_embodiment(emb_sel)
+                            )
+                            candidate_quality_max_base_path = float(
+                                os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_MAX_BASE_PATH_M", "0.8") or 0.8
+                            )
+                            candidate_quality_max_base_yaw_path = float(
+                                os.environ.get(
+                                    "MOMAGEN_ARM_MP_CANDIDATE_QUALITY_MAX_BASE_YAW_PATH_RAD",
+                                    "1.57079632679",
+                                )
+                                or 1.57079632679
+                            )
+                            candidate_quality_max_trunk_path = float(
+                                os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_MAX_TRUNK_PATH", "3.0") or 3.0
+                            )
+                            candidate_quality_max_arm_path = float(
+                                os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_MAX_ARM_PATH", "5.0") or 5.0
+                            )
+                            candidate_quality_base_weight = float(
+                                os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_BASE_WEIGHT", "4.0") or 4.0
+                            )
+                            candidate_quality_yaw_weight = float(
+                                os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_YAW_WEIGHT", "1.0") or 1.0
+                            )
+                            candidate_quality_trunk_weight = float(
+                                os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_TRUNK_WEIGHT", "1.0") or 1.0
+                            )
+                            candidate_quality_arm_weight = float(
+                                os.environ.get("MOMAGEN_ARM_MP_CANDIDATE_QUALITY_ARM_WEIGHT", "1.0") or 1.0
+                            )
+                            downstream_staging_enabled = bool(
+                                int(
+                                    os.environ.get(
+                                        "MOMAGEN_COORDINATED_MULTI_EE_DOWNSTREAM_CONTACT_STAGING_RANKING",
+                                        "0",
+                                    )
+                                    or 0
+                                )
+                            )
+                            downstream_staging_reject = bool(
+                                int(
+                                    os.environ.get(
+                                        "MOMAGEN_COORDINATED_MULTI_EE_DOWNSTREAM_CONTACT_STAGING_REJECT",
+                                        "0",
+                                    )
+                                    or 0
+                                )
+                            )
+                            downstream_staging_weight = float(
+                                os.environ.get(
+                                    "MOMAGEN_COORDINATED_MULTI_EE_DOWNSTREAM_CONTACT_STAGING_WEIGHT",
+                                    "10.0",
+                                )
+                                or 10.0
+                            )
+                            downstream_staging_max_dist = float(
+                                os.environ.get(
+                                    "MOMAGEN_COORDINATED_MULTI_EE_DOWNSTREAM_CONTACT_STAGING_MAX_DIST",
+                                    "0.0",
+                                )
+                                or 0.0
+                            )
+                            downstream_staging_phase_in_range = (
+                                int(os.environ.get("MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_MIN_PHASE", "0") or 0)
+                                <= int(env.execution_phase_ind)
+                                <= int(
+                                    os.environ.get(
+                                        "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_MAX_PHASE",
+                                        "999999",
+                                    )
+                                    or 999999
+                                )
+                            )
+                            downstream_staging_applies = bool(
+                                downstream_staging_enabled
+                                and downstream_staging_phase_in_range
+                                and ref_obj is not None
+                                and object_states.ToggledOn in getattr(ref_obj, "states", {})
+                                and is_default_embodiment(emb_sel)
+                            )
+                            planned_fk_admission_record["candidate_quality_ranking"] = {
+                                "enabled": candidate_quality_enabled,
+                                "applied": bool(candidate_quality_applies),
+                                "reject": candidate_quality_reject,
+                                "phase_in_range": bool(candidate_quality_phase_in_range),
+                                "min_phase": candidate_quality_min_phase,
+                                "max_phase": candidate_quality_max_phase,
+                                "thresholds": {
+                                    "max_base_path_m": candidate_quality_max_base_path,
+                                    "max_base_yaw_path_rad": candidate_quality_max_base_yaw_path,
+                                    "max_trunk_path": candidate_quality_max_trunk_path,
+                                    "max_arm_path": candidate_quality_max_arm_path,
+                                },
+                                "weights": {
+                                    "base": candidate_quality_base_weight,
+                                    "yaw": candidate_quality_yaw_weight,
+                                    "trunk": candidate_quality_trunk_weight,
+                                    "arm": candidate_quality_arm_weight,
+                                },
+                            }
+                            planned_fk_admission_record["downstream_contact_staging_ranking"] = {
+                                "enabled": downstream_staging_enabled,
+                                "applied": bool(downstream_staging_applies),
+                                "reject": downstream_staging_reject,
+                                "phase_in_range": bool(downstream_staging_phase_in_range),
+                                "weight": downstream_staging_weight,
+                                "max_dist": downstream_staging_max_dist,
+                            }
+
+                            def _planned_fk_link_pose_local(robot_state, link_name):
+                                link_key = str(link_name).split(":")[-1]
+                                return robot_state.link_poses.get(link_key) or robot_state.link_poses.get(link_name)
+
+                            def _planned_fk_quat_xyzw(planned_link_pose):
+                                if planned_link_pose is None or not hasattr(planned_link_pose, "quaternion"):
+                                    return None
+                                quat_np = _debug_to_np(planned_link_pose.quaternion[-1])
+                                if quat_np is None or len(quat_np) != 4:
+                                    return None
+                                # cuRobo FK reports wxyz; OmniGibson transform utils use xyzw.
+                                return np.asarray([quat_np[1], quat_np[2], quat_np[3], quat_np[0]], dtype=float)
+
+                            downstream_staging_context = None
+                            if downstream_staging_applies:
+                                try:
+                                    toggle_state = ref_obj.states[object_states.ToggledOn]
+                                    marker = getattr(toggle_state, "visual_marker", None)
+                                    if marker is None:
+                                        raise ValueError("missing_visual_marker")
+                                    marker_pos_raw, marker_quat_raw = marker.get_position_orientation()
+                                    marker_pos_np = np.asarray(_debug_to_np(marker_pos_raw), dtype=float)
+                                    marker_quat_np = np.asarray(_debug_to_np(marker_quat_raw), dtype=float)
+                                    marker_rot_np = np.asarray(
+                                        _debug_to_np(T.quat2mat(th.as_tensor(marker_quat_np, dtype=th.float32))),
+                                        dtype=float,
+                                    )
+                                    marker_local_offset_raw = os.environ.get(
+                                        "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_MARKER_LOCAL_OFFSET",
+                                        os.environ.get(
+                                            "MOMAGEN_TOGGLE_MARKER_POST_MP_MARKER_LOCAL_OFFSET",
+                                            os.environ.get(
+                                                "MOMAGEN_TOGGLE_MARKER_TARGET_MARKER_LOCAL_OFFSET",
+                                                "0.044,-0.035,0.013",
+                                            ),
+                                        ),
+                                    )
+                                    marker_local_offset_np = np.asarray(
+                                        [
+                                            float(value.strip())
+                                            for value in marker_local_offset_raw.split(",")
+                                            if value.strip()
+                                        ],
+                                        dtype=float,
+                                    )
+                                    if marker_local_offset_np.shape != (3,):
+                                        raise ValueError(
+                                            "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_MARKER_LOCAL_OFFSET "
+                                            "must contain 3 comma-separated floats"
+                                        )
+                                    active_arms = [
+                                        value.strip()
+                                        for value in os.environ.get(
+                                            "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_ACTIVE_ARMS",
+                                            "left",
+                                        ).split(",")
+                                        if value.strip()
+                                    ]
+                                    hold_arms = [
+                                        value.strip()
+                                        for value in os.environ.get(
+                                            "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_HOLD_ARMS",
+                                            "right",
+                                        ).split(",")
+                                        if value.strip()
+                                    ]
+                                    active_arm = active_arms[0] if active_arms else "left"
+                                    hold_arm = hold_arms[0] if hold_arms else None
+                                    force_finger_link = os.environ.get(
+                                        "MOMAGEN_TOGGLE_MARKER_CONTACT_PREALIGN_FORCE_FINGER_LINK",
+                                        "",
+                                    ).strip()
+                                    active_finger_link = None
+                                    for finger_link in getattr(robot, "finger_links", {}).get(active_arm, []):
+                                        finger_name = getattr(finger_link, "name", str(finger_link))
+                                        if not force_finger_link or force_finger_link == finger_name or force_finger_link in finger_name:
+                                            active_finger_link = finger_link
+                                            break
+                                    if active_finger_link is None:
+                                        raise ValueError("missing_active_finger_link")
+                                    active_finger_body_name = getattr(
+                                        active_finger_link,
+                                        "body_name",
+                                        str(getattr(active_finger_link, "name", active_finger_link)).split(":")[-1],
+                                    )
+                                    if not hold_arm or hold_arm not in robot.eef_link_names:
+                                        raise ValueError("missing_hold_arm")
+                                    hold_link_name = robot.eef_link_names[hold_arm]
+                                    hold_pos, hold_quat = robot.get_eef_pose(hold_arm)
+                                    hold_pos_np = np.asarray(_debug_to_np(hold_pos), dtype=float)
+                                    hold_quat_np = np.asarray(_debug_to_np(hold_quat), dtype=float)
+                                    hold_rot_np = np.asarray(
+                                        _debug_to_np(T.quat2mat(th.as_tensor(hold_quat_np, dtype=th.float32))),
+                                        dtype=float,
+                                    )
+                                    downstream_staging_context = {
+                                        "active_arm": active_arm,
+                                        "hold_arm": hold_arm,
+                                        "hold_link_name": hold_link_name,
+                                        "active_finger_body_name": active_finger_body_name,
+                                        "marker_pos": marker_pos_np,
+                                        "marker_quat": marker_quat_np,
+                                        "marker_rot": marker_rot_np,
+                                        "marker_local_offset": marker_local_offset_np,
+                                        "marker_local_in_hold": hold_rot_np.T @ (marker_pos_np - hold_pos_np),
+                                        "marker_rot_in_hold": hold_rot_np.T @ marker_rot_np,
+                                    }
+                                except Exception as exc:
+                                    downstream_staging_context = None
+                                    planned_fk_admission_record["downstream_contact_staging_ranking"][
+                                        "error"
+                                    ] = f"{type(exc).__name__}: {exc}"
+                            try:
+                                for raw_success_idx in success_idx.tolist():
+                                    path = traj_paths[int(raw_success_idx)]
+                                    robot_state = env.cmg.mg[emb_sel].kinematics.compute_kinematics(path)
+                                    candidate_record = {
+                                        "success_idx": int(raw_success_idx),
+                                        "per_link": {},
+                                        "failed_links": [],
+                                        "passed": True,
+                                    }
+                                    for link_name in planned_fk_admission_target_links:
+                                        target_pos_value = arm_mp_target_pos[link_name]
+                                        if hasattr(target_pos_value, "ndim") and target_pos_value.ndim == 2:
+                                            target_pos_value = target_pos_value[0]
+                                        target_pos_np = _debug_to_np(target_pos_value)
+                                        planned_link_pose = robot_state.link_poses.get(link_name)
+                                        planned_pos_np = (
+                                            None
+                                            if planned_link_pose is None
+                                            else _debug_to_np(planned_link_pose.position[-1])
+                                        )
+                                        link_record = {
+                                            "target_pos": None if target_pos_np is None else target_pos_np.tolist(),
+                                            "planned_pos": None if planned_pos_np is None else planned_pos_np.tolist(),
+                                        }
+                                        if (
+                                            target_pos_np is None
+                                            or planned_pos_np is None
+                                            or not bool(np.isfinite(target_pos_np).all())
+                                            or not bool(np.isfinite(planned_pos_np).all())
+                                        ):
+                                            link_record["error"] = "nonfinite_or_missing_position"
+                                            candidate_record["failed_links"].append(link_name)
+                                        else:
+                                            pos_err = float(np.linalg.norm(planned_pos_np - target_pos_np))
+                                            link_record["planned_to_target_pos_dist"] = pos_err
+                                            if pos_err > planned_fk_admission_max_pos_err:
+                                                candidate_record["failed_links"].append(link_name)
+                                        candidate_record["per_link"][link_name] = link_record
+                                    if planned_payload_collision_pairs:
+                                        try:
+                                            q_path = env.cmg.path_to_joint_trajectory(
+                                                path, get_full_js=True, emb_sel=emb_sel
+                                            )
+                                            collision_result = env.cmg.check_link_pair_collisions(
+                                                q_path,
+                                                planned_payload_collision_pairs,
+                                                initial_joint_pos=robot.get_joint_positions(),
+                                                skip_obstacle_update=True,
+                                                attached_obj=planning_attached_obj,
+                                                attached_obj_scale=planning_attached_obj_scale,
+                                                attached_obj_options=_attached_payload_options(planning_attached_obj),
+                                                emb_sel=emb_sel,
+                                                margin=planned_payload_collision_margin,
+                                            )
+                                            collision_np = _debug_to_np(collision_result.get("collision"))
+                                            pair_records = []
+                                            min_pair_dist = None
+                                            for pair_record in collision_result.get("pairs", []):
+                                                min_dist_np = _debug_to_np(pair_record.get("min_distance"))
+                                                collision_pair_np = _debug_to_np(pair_record.get("collision"))
+                                                if min_dist_np is not None:
+                                                    finite_min_dist_np = np.asarray(min_dist_np)[
+                                                        np.isfinite(np.asarray(min_dist_np))
+                                                    ]
+                                                    if finite_min_dist_np.size > 0:
+                                                        pair_min = float(finite_min_dist_np.min())
+                                                        min_pair_dist = (
+                                                            pair_min
+                                                            if min_pair_dist is None
+                                                            else min(min_pair_dist, pair_min)
+                                                        )
+                                                pair_records.append(
+                                                    {
+                                                        "pair": pair_record.get("pair"),
+                                                        "left_links": pair_record.get("left_links"),
+                                                        "right_links": pair_record.get("right_links"),
+                                                        "missing_links": pair_record.get("missing_links"),
+                                                        "min_distance": None
+                                                        if min_dist_np is None
+                                                        else np.asarray(min_dist_np).tolist(),
+                                                        "collision": None
+                                                        if collision_pair_np is None
+                                                        else np.asarray(collision_pair_np).astype(bool).tolist(),
+                                                    }
+                                                )
+                                            payload_collision = bool(
+                                                collision_np is not None
+                                                and np.asarray(collision_np).astype(bool).any()
+                                            )
+                                            candidate_record["attached_payload_pair_collision"] = {
+                                                "applied": True,
+                                                "collision": payload_collision,
+                                                "margin": planned_payload_collision_margin,
+                                                "min_distance": min_pair_dist,
+                                                "pairs": pair_records,
+                                            }
+                                            if payload_collision:
+                                                candidate_record["failed_links"].append("attached_payload_pair_collision")
+                                        except Exception as exc:
+                                            candidate_record["attached_payload_pair_collision"] = {
+                                                "applied": False,
+                                                "error": f"{type(exc).__name__}: {exc}",
+                                            }
+                                            candidate_record["failed_links"].append("attached_payload_pair_collision_error")
+                                    if candidate_quality_applies:
+                                        try:
+                                            q_path_for_quality = env.cmg.path_to_joint_trajectory(
+                                                path, get_full_js=True, emb_sel=emb_sel
+                                            )
+                                            quality_by_group = _joint_path_quality_by_group(robot, q_path_for_quality)
+                                            base_quality = quality_by_group.get("base", {})
+                                            trunk_quality = quality_by_group.get("trunk", {})
+                                            arm_left_quality = quality_by_group.get("arm_left", {})
+                                            arm_right_quality = quality_by_group.get("arm_right", {})
+                                            quality_failures = []
+                                            base_path = float(base_quality.get("path_m", 0.0) or 0.0)
+                                            base_yaw_path = float(base_quality.get("path_rad", 0.0) or 0.0)
+                                            trunk_path = float(trunk_quality.get("path", 0.0) or 0.0)
+                                            arm_left_path = float(arm_left_quality.get("path", 0.0) or 0.0)
+                                            arm_right_path = float(arm_right_quality.get("path", 0.0) or 0.0)
+                                            if base_path > candidate_quality_max_base_path:
+                                                quality_failures.append("base_path")
+                                            if base_yaw_path > candidate_quality_max_base_yaw_path:
+                                                quality_failures.append("base_yaw_path")
+                                            if trunk_path > candidate_quality_max_trunk_path:
+                                                quality_failures.append("trunk_path")
+                                            if max(arm_left_path, arm_right_path) > candidate_quality_max_arm_path:
+                                                quality_failures.append("arm_path")
+                                            quality_score = (
+                                                candidate_quality_base_weight * base_path
+                                                + candidate_quality_yaw_weight * base_yaw_path
+                                                + candidate_quality_trunk_weight * trunk_path
+                                                + candidate_quality_arm_weight * (arm_left_path + arm_right_path)
+                                            )
+                                            candidate_record["candidate_quality"] = {
+                                                "applied": True,
+                                                "score": float(quality_score),
+                                                "failures": quality_failures,
+                                                "by_group": quality_by_group,
+                                            }
+                                            if candidate_quality_reject and quality_failures:
+                                                candidate_record["failed_links"].extend(
+                                                    [f"candidate_quality_{name}" for name in quality_failures]
+                                                )
+                                        except Exception as exc:
+                                            candidate_record["candidate_quality"] = {
+                                                "applied": False,
+                                                "error": f"{type(exc).__name__}: {exc}",
+                                            }
+                                            if candidate_quality_reject:
+                                                candidate_record["failed_links"].append("candidate_quality_error")
+                                    if downstream_staging_applies and downstream_staging_context is not None:
+                                        try:
+                                            hold_pose = _planned_fk_link_pose_local(
+                                                robot_state,
+                                                downstream_staging_context["hold_link_name"],
+                                            )
+                                            finger_pose = _planned_fk_link_pose_local(
+                                                robot_state,
+                                                downstream_staging_context["active_finger_body_name"],
+                                            )
+                                            hold_pos_np = None if hold_pose is None else _debug_to_np(hold_pose.position[-1])
+                                            finger_pos_np = (
+                                                None if finger_pose is None else _debug_to_np(finger_pose.position[-1])
+                                            )
+                                            hold_quat_np = _planned_fk_quat_xyzw(hold_pose)
+                                            if (
+                                                hold_pos_np is None
+                                                or finger_pos_np is None
+                                                or hold_quat_np is None
+                                                or not bool(np.isfinite(hold_pos_np).all())
+                                                or not bool(np.isfinite(finger_pos_np).all())
+                                                or not bool(np.isfinite(hold_quat_np).all())
+                                            ):
+                                                raise ValueError("missing_or_nonfinite_planned_pose")
+                                            hold_rot_np = np.asarray(
+                                                _debug_to_np(T.quat2mat(th.as_tensor(hold_quat_np, dtype=th.float32))),
+                                                dtype=float,
+                                            )
+                                            predicted_marker_pos = np.asarray(hold_pos_np, dtype=float) + hold_rot_np @ downstream_staging_context["marker_local_in_hold"]
+                                            predicted_marker_rot = hold_rot_np @ downstream_staging_context["marker_rot_in_hold"]
+                                            desired_finger_pos = (
+                                                predicted_marker_pos
+                                                + predicted_marker_rot @ downstream_staging_context["marker_local_offset"]
+                                            )
+                                            staging_dist = float(
+                                                np.linalg.norm(np.asarray(finger_pos_np, dtype=float) - desired_finger_pos)
+                                            )
+                                            candidate_record["downstream_contact_staging"] = {
+                                                "applied": True,
+                                                "active_arm": downstream_staging_context["active_arm"],
+                                                "hold_arm": downstream_staging_context["hold_arm"],
+                                                "active_finger_body_name": downstream_staging_context[
+                                                    "active_finger_body_name"
+                                                ],
+                                                "hold_link_name": downstream_staging_context["hold_link_name"],
+                                                "planned_finger_pos": np.asarray(finger_pos_np, dtype=float).tolist(),
+                                                "predicted_marker_pos": predicted_marker_pos.tolist(),
+                                                "desired_finger_pos": desired_finger_pos.tolist(),
+                                                "planned_finger_to_desired_dist": staging_dist,
+                                                "score_bonus": float(downstream_staging_weight * staging_dist),
+                                            }
+                                            candidate_record.setdefault("candidate_quality", {}).setdefault(
+                                                "score",
+                                                0.0,
+                                            )
+                                            candidate_record["candidate_quality"][
+                                                "score_before_downstream_contact_staging"
+                                            ] = float(candidate_record["candidate_quality"]["score"])
+                                            candidate_record["candidate_quality"]["score"] = float(
+                                                candidate_record["candidate_quality"]["score"]
+                                                + downstream_staging_weight * staging_dist
+                                            )
+                                            if (
+                                                downstream_staging_reject
+                                                and downstream_staging_max_dist > 0.0
+                                                and staging_dist > downstream_staging_max_dist
+                                            ):
+                                                candidate_record["failed_links"].append(
+                                                    "downstream_contact_staging_dist"
+                                                )
+                                        except Exception as exc:
+                                            candidate_record["downstream_contact_staging"] = {
+                                                "applied": False,
+                                                "error": f"{type(exc).__name__}: {exc}",
+                                            }
+                                            if downstream_staging_reject:
+                                                candidate_record["failed_links"].append(
+                                                    "downstream_contact_staging_error"
+                                                )
+                                    candidate_record["passed"] = len(candidate_record["failed_links"]) == 0
+                                    if candidate_record["passed"]:
+                                        accepted_success_idx.append(int(raw_success_idx))
+                                    else:
+                                        planned_fk_failed_links_for_retry.extend(candidate_record["failed_links"])
+                                    planned_fk_admission_record["candidates"].append(candidate_record)
+                                if candidate_quality_applies and accepted_success_idx:
+                                    accepted_candidate_records = [
+                                        candidate
+                                        for candidate in planned_fk_admission_record["candidates"]
+                                        if int(candidate.get("success_idx", -1)) in set(accepted_success_idx)
+                                    ]
+                                    accepted_candidate_records.sort(
+                                        key=lambda candidate: float(
+                                            candidate.get("candidate_quality", {}).get("score", float("inf"))
+                                        )
+                                    )
+                                    accepted_success_idx = [
+                                        int(candidate["success_idx"]) for candidate in accepted_candidate_records
+                                    ]
+                                    planned_fk_admission_record["candidate_quality_ranking"][
+                                        "sorted_accepted_success_idx"
+                                    ] = accepted_success_idx
+                                planned_fk_admission_record["attached_payload_pair_collision_validation"][
+                                    "applied"
+                                ] = bool(planned_payload_collision_pairs)
+                                planned_fk_admission_record["accepted_success_idx"] = accepted_success_idx
+                                success_idx = th.as_tensor(accepted_success_idx, dtype=th.long)
+                            except Exception as exc:
+                                planned_fk_admission_record["error"] = f"{type(exc).__name__}: {exc}"
+                                planned_fk_admission_record["accepted_success_idx"] = []
+                                planned_fk_admission_record["candidates"] = []
+                                planned_fk_failed_links_for_retry = list(planned_fk_admission_target_links)
+                                success_idx = th.as_tensor([], dtype=th.long)
+                        phase_logs[env.execution_phase_ind].setdefault(
+                            "coordinated_multi_ee_planned_fk_admission", []
+                        ).append(planned_fk_admission_record)
+                        print(
+                            "[MOMAGEN_COORDINATED_MULTI_EE_PLANNED_FK_ADMISSION] "
+                            + json.dumps(planned_fk_admission_record, default=str),
+                            flush=True,
+                        )
+
                     if len(success_idx) == 0:
                         print(f"Arm MP trial {arm_mp_trial} failed with status {mp_results[0].status}. Retrying...")
                         if arm_mp_diag_enabled and not arm_mp_diag_done:
                             _run_arm_mp_failure_diagnostics(status_value, arm_mp_trial)
                             arm_mp_diag_done = True
+                        switched_default_variant = False
+                        for failed_link_name in planned_fk_failed_links_for_retry:
+                            candidate_emb_sel = default_embodiment_variant(failed_link_name)
+                            if (
+                                candidate_emb_sel in getattr(env.cmg, "mg", {})
+                                and candidate_emb_sel not in attempted_emb_sels
+                            ):
+                                retry_record = {
+                                    "phase": int(env.execution_phase_ind),
+                                    "trial": int(arm_mp_trial),
+                                    "previous_emb_sel": str(emb_sel),
+                                    "next_emb_sel": str(candidate_emb_sel),
+                                    "failed_link": failed_link_name,
+                                    "reason": "planned_fk_admission_failed",
+                                }
+                                phase_logs[env.execution_phase_ind].setdefault(
+                                    "coordinated_multi_ee_default_variant_retry", []
+                                ).append(retry_record)
+                                print(
+                                    "[MOMAGEN_COORDINATED_MULTI_EE_DEFAULT_VARIANT_RETRY] "
+                                    + json.dumps(retry_record, default=str),
+                                    flush=True,
+                                )
+                                emb_sel = candidate_emb_sel
+                                attempted_emb_sels.add(str(emb_sel))
+                                new_target_pos = copy.deepcopy(arm_mp_target_pos)
+                                switched_default_variant = True
+                                break
+                        if switched_default_variant:
+                            continue
                         if (
                             (not has_arm_no_torso_emb_sel)
-                            and (emb_sel != CuRoboEmbodimentSelection.DEFAULT)
+                            and (not is_default_embodiment(emb_sel))
                             and (not default_emb_sel_fallback_used)
                             and (not disable_default_emb_sel_fallback)
                             and (CuRoboEmbodimentSelection.DEFAULT in getattr(env.cmg, "mg", {}))
-                            and ("IK Fail" in mp_results[0].status.value)
+                            and ("IK Fail" in status_value)
                         ):
                             print("Arm MP IK failed with ARM embodiment; retrying once with DEFAULT embodiment.")
                             emb_sel = CuRoboEmbodimentSelection.DEFAULT
@@ -9386,7 +10925,7 @@ class WaypointTrajectory(object):
                 q_traj = q_traj.cpu()
                 cap_base_drift = bool(int(os.environ.get("MOMAGEN_ARM_MP_CAP_BASE_DRIFT", "0") or 0))
                 cap_base_drift_record = None
-                if cap_base_drift and emb_sel == CuRoboEmbodimentSelection.DEFAULT and hasattr(robot, "base_control_idx"):
+                if cap_base_drift and is_default_embodiment(emb_sel) and hasattr(robot, "base_control_idx"):
                     cap_min_phase = int(os.environ.get("MOMAGEN_ARM_MP_CAP_BASE_DRIFT_MIN_PHASE", "0") or 0)
                     cap_max_phase = int(
                         os.environ.get("MOMAGEN_ARM_MP_CAP_BASE_DRIFT_MAX_PHASE", "999999") or 999999
@@ -9557,7 +11096,7 @@ class WaypointTrajectory(object):
                     print("[MOMAGEN_ARM_MP_BASE_DRIFT_REJECT] " + json.dumps(reject_record, default=str), flush=True)
                 execute_live_q_to_action = bool(
                     int(os.environ.get("MOMAGEN_ARM_MP_EXECUTE_LIVE_Q_TO_ACTION", "0") or 0)
-                ) or bool(wholebody_arm_mp_enabled and emb_sel == CuRoboEmbodimentSelection.DEFAULT)
+                ) or bool(wholebody_arm_mp_enabled and is_default_embodiment(emb_sel))
                 if execute_live_q_to_action and (len(left_mp_waypoints) == 0 or len(right_mp_waypoints) == 0):
                     # The live conversion path is intended for explicit whole-body manipulation planning where
                     # CuRobo controls all constrained EEFs and the holonomic base in one trajectory.  The legacy
@@ -9700,6 +11239,9 @@ class WaypointTrajectory(object):
                         arm_mp_tracking_diag_record["start_q_to_plan_final_max_abs"] = float(
                             (current_q - planned_final_q).abs().max()
                         )
+                        arm_mp_tracking_diag_record["start_q_to_plan_final_by_group"] = _joint_error_summary_by_group(
+                            robot, current_q, planned_final_q
+                        )
                         for idx_name in ("base_idx", "trunk_control_idx", "arm_control_idx"):
                             if hasattr(robot, idx_name):
                                 idx = _safe_index_tensor(getattr(robot, idx_name))
@@ -9836,7 +11378,15 @@ class WaypointTrajectory(object):
                         obs, obs_info = env.get_obs_IL()
                         datagen_info = env_interface.get_datagen_info(action=mp_action)
                         # TODO: Check if we can use primitive stack execute action here. This will allow for checking convergence errors etc.
+                        if arm_mp_tracking_diag_record is not None and i in {0, len(mp_actions) - 1}:
+                            arm_mp_tracking_diag_record.setdefault("action_limit_summary", {})[
+                                f"pre_postprocess_step_{i}"
+                            ] = _action_limit_summary_by_controller(robot, mp_action)
                         mp_action = _postprocess_action_compatible(env, mp_action)
+                        if arm_mp_tracking_diag_record is not None and i in {0, len(mp_actions) - 1}:
+                            arm_mp_tracking_diag_record.setdefault("action_limit_summary", {})[
+                                f"post_postprocess_step_{i}"
+                            ] = _action_limit_summary_by_controller(robot, mp_action)
                         if arm_mp_debug and i < int(os.environ.get("MOMAGEN_ARM_MP_DEBUG_ACTION_STEPS", "3") or 3):
                             action_np = np.asarray(mp_action)
                             print(
@@ -9882,12 +11432,117 @@ class WaypointTrajectory(object):
                         for k in success:
                             success[k] = success[k] or cur_success_metrics[k]
 
+                final_settle_steps = int(os.environ.get("MOMAGEN_ARM_MP_FINAL_SETTLE_STEPS", "0") or 0)
+                final_settle_min_phase = int(os.environ.get("MOMAGEN_ARM_MP_FINAL_SETTLE_MIN_PHASE", "0") or 0)
+                final_settle_max_phase = int(
+                    os.environ.get("MOMAGEN_ARM_MP_FINAL_SETTLE_MAX_PHASE", "999999") or 999999
+                )
+                final_settle_phase_in_range = (
+                    final_settle_min_phase <= int(env.execution_phase_ind) <= final_settle_max_phase
+                )
+                if final_settle_steps > 0:
+                    final_settle_record = {
+                        "enabled": True,
+                        "applied": bool(final_settle_phase_in_range),
+                        "phase": int(env.execution_phase_ind),
+                        "emb_sel": str(emb_sel),
+                        "steps": int(final_settle_steps),
+                        "min_phase": final_settle_min_phase,
+                        "max_phase": final_settle_max_phase,
+                    }
+                    if final_settle_phase_in_range:
+                        try:
+                            planned_final_q_for_settle = q_traj[-1].detach().cpu()
+                            before_settle_q = robot.get_joint_positions().detach().cpu()
+                            final_settle_record["start_q_to_plan_final_max_abs"] = float(
+                                (before_settle_q - planned_final_q_for_settle).abs().max()
+                            )
+                            final_settle_record["start_q_to_plan_final_by_group"] = _joint_error_summary_by_group(
+                                robot, before_settle_q, planned_final_q_for_settle
+                            )
+                            for idx_name in ("base_idx", "trunk_control_idx", "arm_control_idx"):
+                                if hasattr(robot, idx_name):
+                                    idx = _safe_index_tensor(getattr(robot, idx_name))
+                                    try:
+                                        final_settle_record[f"{idx_name}_start_to_plan_final_max_abs"] = float(
+                                            (before_settle_q[idx] - planned_final_q_for_settle[idx]).abs().max()
+                                        )
+                                    except Exception as exc:
+                                        final_settle_record[f"{idx_name}_start_to_plan_final_err"] = str(exc)
+                            for settle_step in range(final_settle_steps):
+                                settle_action = _joint_trajectory_point_to_action(
+                                    robot, planned_final_q_for_settle.detach().clone()
+                                ).cpu().numpy()
+                                if left_gripper_action is not None:
+                                    settle_action[env_interface.gripper_action_dim[0]] = left_gripper_action[0]
+                                if right_gripper_action is not None:
+                                    settle_action[env_interface.gripper_action_dim[1]] = right_gripper_action[1]
+                                state = env.get_state()["states"]
+                                obs, obs_info = env.get_obs_IL()
+                                datagen_info = env_interface.get_datagen_info(action=settle_action)
+                                if settle_step in {0, final_settle_steps - 1}:
+                                    final_settle_record.setdefault("action_limit_summary", {})[
+                                        f"pre_postprocess_step_{settle_step}"
+                                    ] = _action_limit_summary_by_controller(robot, settle_action)
+                                settle_action = _postprocess_action_compatible(env, settle_action)
+                                if settle_step in {0, final_settle_steps - 1}:
+                                    final_settle_record.setdefault("action_limit_summary", {})[
+                                        f"post_postprocess_step_{settle_step}"
+                                    ] = _action_limit_summary_by_controller(robot, settle_action)
+                                env.step(settle_action, video_writer)
+                                if enable_marker_vis:
+                                    env.eef_current_marker_left.set_position_orientation(*robot.get_eef_pose("left"))
+                                    env.eef_current_marker_right.set_position_orientation(*robot.get_eef_pose("right"))
+                                    if left_eef_poses:
+                                        env.eef_goal_marker_left.set_position_orientation(*left_eef_poses[-1])
+                                    if right_eef_poses:
+                                        env.eef_goal_marker_right.set_position_orientation(*right_eef_poses[-1])
+                                local_env_step += 1
+                                env.global_env_step += 1
+                                states.append(state)
+                                actions.append(settle_action)
+                                observations.append(obs)
+                                observations_info.append(json.dumps(obs_info))
+                                datagen_infos.append(datagen_info)
+                                cur_success_metrics = env.is_success()
+                                self.check_ref_obj_visibility(env, obs, obs_info, ref_obj)
+                                for k in success:
+                                    success[k] = success[k] or cur_success_metrics[k]
+                            after_settle_q = robot.get_joint_positions().detach().cpu()
+                            final_settle_record["executed_q_to_plan_final_max_abs"] = float(
+                                (after_settle_q - planned_final_q_for_settle).abs().max()
+                            )
+                            final_settle_record["executed_q_to_plan_final_by_group"] = _joint_error_summary_by_group(
+                                robot, after_settle_q, planned_final_q_for_settle
+                            )
+                            for idx_name in ("base_idx", "trunk_control_idx", "arm_control_idx"):
+                                if hasattr(robot, idx_name):
+                                    idx = _safe_index_tensor(getattr(robot, idx_name))
+                                    try:
+                                        final_settle_record[f"{idx_name}_executed_to_plan_final_max_abs"] = float(
+                                            (after_settle_q[idx] - planned_final_q_for_settle[idx]).abs().max()
+                                        )
+                                    except Exception as exc:
+                                        final_settle_record[f"{idx_name}_executed_to_plan_final_err"] = str(exc)
+                        except Exception as exc:
+                            final_settle_record["applied"] = False
+                            final_settle_record["error"] = f"{type(exc).__name__}: {exc}"
+                    else:
+                        final_settle_record["reason"] = "phase_out_of_range"
+                    phase_logs[env.execution_phase_ind].setdefault("arm_mp_final_settle", []).append(
+                        final_settle_record
+                    )
+                    print("[MOMAGEN_ARM_MP_FINAL_SETTLE] " + json.dumps(final_settle_record, default=str), flush=True)
+
                 if arm_mp_tracking_diag_record is not None:
                     try:
                         final_q = robot.get_joint_positions().detach().cpu()
                         planned_final_q = q_traj[-1].detach().cpu()
                         arm_mp_tracking_diag_record["executed_q_to_plan_final_max_abs"] = float(
                             (final_q - planned_final_q).abs().max()
+                        )
+                        arm_mp_tracking_diag_record["executed_q_to_plan_final_by_group"] = _joint_error_summary_by_group(
+                            robot, final_q, planned_final_q
                         )
                         for idx_name in ("base_idx", "trunk_control_idx", "arm_control_idx"):
                             if hasattr(robot, idx_name):
@@ -9954,6 +11609,111 @@ class WaypointTrajectory(object):
                         arm_mp_tracking_diag_record
                     )
                     print("[MOMAGEN_ARM_MP_TRACKING_DIAG] " + json.dumps(arm_mp_tracking_diag_record, default=str), flush=True)
+
+                coordinated_multi_ee_validation_enabled = bool(
+                    int(os.environ.get("MOMAGEN_COORDINATED_MULTI_EE_HARD_VALIDATION", "1") or 1)
+                )
+                coordinated_multi_ee_validation_min_phase = int(
+                    os.environ.get("MOMAGEN_COORDINATED_MULTI_EE_HARD_VALIDATION_MIN_PHASE", "0") or 0
+                )
+                coordinated_multi_ee_validation_max_phase = int(
+                    os.environ.get("MOMAGEN_COORDINATED_MULTI_EE_HARD_VALIDATION_MAX_PHASE", "999999") or 999999
+                )
+                coordinated_multi_ee_validation_max_pos_err = float(
+                    os.environ.get("MOMAGEN_COORDINATED_MULTI_EE_HARD_VALIDATION_MAX_POS_ERR", "0.05") or 0.05
+                )
+                coordinated_multi_ee_validation_phase_in_range = (
+                    coordinated_multi_ee_validation_min_phase
+                    <= int(env.execution_phase_ind)
+                    <= coordinated_multi_ee_validation_max_phase
+                )
+                eef_target_link_names = [
+                    link_name
+                    for link_name in robot.eef_link_names.values()
+                    if link_name in arm_mp_target_pos and link_name in arm_mp_target_quat
+                ]
+                coordinated_multi_ee_validation_applies = bool(
+                    coordinated_multi_ee_validation_enabled
+                    and coordinated_multi_ee_validation_phase_in_range
+                    and phase_type == "coordinated"
+                    and len(eef_target_link_names) >= 2
+                )
+                if coordinated_multi_ee_validation_enabled:
+                    coordinated_multi_ee_validation_record = {
+                        "enabled": True,
+                        "applied": bool(coordinated_multi_ee_validation_applies),
+                        "phase": int(env.execution_phase_ind),
+                        "phase_type": phase_type,
+                        "emb_sel": str(emb_sel),
+                        "phase_in_range": bool(coordinated_multi_ee_validation_phase_in_range),
+                        "min_phase": coordinated_multi_ee_validation_min_phase,
+                        "max_phase": coordinated_multi_ee_validation_max_phase,
+                        "max_pos_err": coordinated_multi_ee_validation_max_pos_err,
+                        "explicit_target_links": list(arm_mp_target_pos.keys()),
+                        "target_links": eef_target_link_names,
+                        "per_link": {},
+                        "failed_links": [],
+                        "passed": True,
+                    }
+                    if not coordinated_multi_ee_validation_applies:
+                        if not coordinated_multi_ee_validation_phase_in_range:
+                            coordinated_multi_ee_validation_record["reason"] = "phase_out_of_range"
+                        elif phase_type != "coordinated":
+                            coordinated_multi_ee_validation_record["reason"] = "phase_type_not_coordinated"
+                        elif len(eef_target_link_names) < 2:
+                            coordinated_multi_ee_validation_record["reason"] = "fewer_than_two_eef_targets"
+                    else:
+                        try:
+                            for link_name in eef_target_link_names:
+                                target_pos = arm_mp_target_pos[link_name]
+                                if hasattr(target_pos, "ndim") and target_pos.ndim == 2:
+                                    target_pos = target_pos[0]
+                                target_pos_np = _debug_to_np(target_pos)
+                                actual_pos, actual_quat = robot.links[link_name].get_position_orientation()
+                                actual_pos_np = _debug_to_np(actual_pos)
+                                actual_quat_np = _debug_to_np(actual_quat)
+                                link_record = {
+                                    "target_pos": None if target_pos_np is None else target_pos_np.tolist(),
+                                    "actual_pos": None if actual_pos_np is None else actual_pos_np.tolist(),
+                                    "actual_quat": None if actual_quat_np is None else actual_quat_np.tolist(),
+                                }
+                                if (
+                                    target_pos_np is None
+                                    or actual_pos_np is None
+                                    or not bool(np.isfinite(target_pos_np).all())
+                                    or not bool(np.isfinite(actual_pos_np).all())
+                                ):
+                                    link_record["error"] = "nonfinite_or_missing_position"
+                                    coordinated_multi_ee_validation_record["failed_links"].append(link_name)
+                                else:
+                                    pos_err = float(np.linalg.norm(actual_pos_np - target_pos_np))
+                                    link_record["actual_to_target_pos_dist"] = pos_err
+                                    if pos_err > coordinated_multi_ee_validation_max_pos_err:
+                                        coordinated_multi_ee_validation_record["failed_links"].append(link_name)
+                                coordinated_multi_ee_validation_record["per_link"][link_name] = link_record
+                            coordinated_multi_ee_validation_record["passed"] = (
+                                len(coordinated_multi_ee_validation_record["failed_links"]) == 0
+                            )
+                        except Exception as exc:
+                            coordinated_multi_ee_validation_record["passed"] = False
+                            coordinated_multi_ee_validation_record["error"] = f"{type(exc).__name__}: {exc}"
+                            coordinated_multi_ee_validation_record["failed_links"] = list(eef_target_link_names)
+                    phase_logs[env.execution_phase_ind].setdefault(
+                        "coordinated_multi_ee_hard_validation", []
+                    ).append(coordinated_multi_ee_validation_record)
+                    print(
+                        "[MOMAGEN_COORDINATED_MULTI_EE_HARD_VALIDATION] "
+                        + json.dumps(coordinated_multi_ee_validation_record, default=str),
+                        flush=True,
+                    )
+                    if (
+                        coordinated_multi_ee_validation_record["applied"]
+                        and not coordinated_multi_ee_validation_record["passed"]
+                    ):
+                        env.err = "CoordinatedMultiEEHardValidationFailed"
+                        env.valid_env = False
+                        env.execution_phase_ind += 1
+                        return None
 
                 local_env_step = _maybe_execute_toggle_marker_post_mp_press(
                     left_gripper_action=left_gripper_action,
@@ -10148,6 +11908,7 @@ class WaypointTrajectory(object):
                 attached_obj_by_link=attached_obj if isinstance(attached_obj, dict) else None,
             )
 
+            contact_prealign_status = {}
             local_env_step = _maybe_execute_toggle_marker_contact_prealign(
                 left_gripper_action=left_gripper_action,
                 right_gripper_action=right_gripper_action,
@@ -10163,24 +11924,40 @@ class WaypointTrajectory(object):
                 wholebody_arm_mp_enabled=wholebody_arm_mp_enabled,
                 emb_sel=emb_sel,
                 timing_stage="after_arm_replay",
+                status_out=contact_prealign_status,
             )
 
-            local_env_step = _maybe_execute_toggle_marker_post_mp_press(
-                left_gripper_action=left_gripper_action,
-                right_gripper_action=right_gripper_action,
-                video_writer=video_writer,
-                states=states,
-                actions=actions,
-                observations=observations,
-                observations_info=observations_info,
-                datagen_infos=datagen_infos,
-                success=success,
-                local_env_step=local_env_step,
-                execute_live_q_to_action=execute_live_q_to_action,
-                wholebody_arm_mp_enabled=wholebody_arm_mp_enabled,
-                emb_sel=emb_sel,
-                press_timing_stage="after_arm_replay",
-            )
+            if contact_prealign_status.get("attempted") and contact_prealign_status.get("passed") is False:
+                skip_record = {
+                    "enabled": True,
+                    "applied": False,
+                    "phase": int(env.execution_phase_ind),
+                    "timing_stage": "after_arm_replay",
+                    "press_timing_stage": "after_arm_replay",
+                    "reason": "contact_prealign_failed",
+                    "contact_prealign_status": dict(contact_prealign_status),
+                }
+                phase_logs.setdefault(env.execution_phase_ind, {}).setdefault(
+                    "toggle_marker_post_mp_press", []
+                ).append(skip_record)
+                print("[MOMAGEN_TOGGLE_MARKER_POST_MP_PRESS] " + json.dumps(skip_record, default=str), flush=True)
+            else:
+                local_env_step = _maybe_execute_toggle_marker_post_mp_press(
+                    left_gripper_action=left_gripper_action,
+                    right_gripper_action=right_gripper_action,
+                    video_writer=video_writer,
+                    states=states,
+                    actions=actions,
+                    observations=observations,
+                    observations_info=observations_info,
+                    datagen_infos=datagen_infos,
+                    success=success,
+                    local_env_step=local_env_step,
+                    execute_live_q_to_action=execute_live_q_to_action,
+                    wholebody_arm_mp_enabled=wholebody_arm_mp_enabled,
+                    emb_sel=emb_sel,
+                    press_timing_stage="after_arm_replay",
+                )
 
             # =================================================== End of Arm Replay ==========================================================
 
@@ -10309,6 +12086,7 @@ class WaypointTrajectory(object):
                     success_ratio=1.0 / env.primitive._motion_generator.batch_size,
                     attached_obj=attached_obj,
                     attached_obj_scale=attached_obj_scale,
+                    attached_obj_options=_attached_payload_options(attached_obj),
                     emb_sel=emb_sel,
                 )
                 full_retract_mp_planning_finish_time = time.time()
@@ -10409,6 +12187,7 @@ class WaypointTrajectory(object):
                         success_ratio=1.0 / env.primitive._motion_generator.batch_size,
                         attached_obj=attached_obj,
                         attached_obj_scale=attached_obj_scale,
+                        attached_obj_options=_attached_payload_options(attached_obj),
                         emb_sel=emb_sel,
                     )
                     torso_retract_mp_planning_finish_time = time.time()

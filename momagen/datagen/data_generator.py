@@ -1005,6 +1005,57 @@ class DataGenerator(object):
                                 "treating carry phase as reachable so source base preapproach can run before ARM MP"
                             )
                             reachable_and_visible = True
+                        if (
+                            not reachable_and_visible
+                            and bool(int(os.environ.get("MOMAGEN_SKIP_NAV_FOR_HELD_OBJECT_PHASES", "0") or 0))
+                            and attached_obj_new is not None
+                        ):
+                            skip_nav_min_phase = int(os.environ.get("MOMAGEN_SKIP_NAV_FOR_HELD_OBJECT_MIN_PHASE", "0") or 0)
+                            skip_nav_max_phase = int(
+                                os.environ.get("MOMAGEN_SKIP_NAV_FOR_HELD_OBJECT_MAX_PHASE", "999999") or 999999
+                            )
+                            skip_nav_phase_types_raw = os.environ.get(
+                                "MOMAGEN_SKIP_NAV_FOR_HELD_OBJECT_PHASE_TYPES",
+                                "coordinated",
+                            )
+                            skip_nav_phase_types = {
+                                value.strip()
+                                for value in skip_nav_phase_types_raw.split(",")
+                                if value.strip()
+                            }
+                            skip_nav_phase_in_range = (
+                                skip_nav_min_phase <= int(env.execution_phase_ind) <= skip_nav_max_phase
+                            )
+                            skip_nav_phase_type_match = (
+                                not skip_nav_phase_types or str(phase_type) in skip_nav_phase_types
+                            )
+                            skip_nav_record = {
+                                "enabled": True,
+                                "applied": bool(skip_nav_phase_in_range and skip_nav_phase_type_match),
+                                "phase": int(env.execution_phase_ind),
+                                "phase_type": phase_type,
+                                "min_phase": skip_nav_min_phase,
+                                "max_phase": skip_nav_max_phase,
+                                "phase_types": sorted(skip_nav_phase_types),
+                                "attached_obj_actual_keys": list(attached_obj_new.keys()),
+                                "reason": None,
+                            }
+                            if not skip_nav_phase_in_range:
+                                skip_nav_record["reason"] = "phase_out_of_range"
+                            elif not skip_nav_phase_type_match:
+                                skip_nav_record["reason"] = "phase_type_mismatch"
+                            else:
+                                skip_nav_record["reason"] = "held_object_phase_nav_suppressed"
+                                reachable_and_visible = True
+                            phase_logs.setdefault(env.execution_phase_ind, {}).setdefault(
+                                "held_object_nav_suppression",
+                                [],
+                            ).append(skip_nav_record)
+                            print(
+                                "[MOMAGEN_SKIP_NAV_FOR_HELD_OBJECT_PHASES] "
+                                + json.dumps(skip_nav_record, default=str),
+                                flush=True,
+                            )
                         print("object to be manipulated is reachable and visible: ", reachable_and_visible)
                         # ======================== End of reachibility and visibility check =========================
                 # If we are in the debugging mode of "manipulation_only" for pick_cup task, don't check reachability and visibility
