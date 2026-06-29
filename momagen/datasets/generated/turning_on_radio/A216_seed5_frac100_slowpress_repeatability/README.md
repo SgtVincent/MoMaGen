@@ -24,6 +24,12 @@ This folder contains a replay-gated MoMaGen candidate for the BEHAVIOR-1K
   1/46 frames in the `760..805` press window. This candidate is useful as a
   replay-gated success case, but should not be admitted for training until the
   camera framing is accepted by human review or improved in a follow-up run.
+- Generated replay preflight:
+  `quality_gate/A216_generated_data_admission_preflight_v1.json` records
+  `generated_replay_admitted=false` and
+  `conversion_eligible=false`. The action/contact replay succeeds, but the
+  generated replay admission remains blocked by missing human review and
+  observation-quality failures in the head camera.
 
 ## Replay gate evidence
 
@@ -54,6 +60,11 @@ The action replay admission gate checks three windows:
 The admission gate summary is in
 `quality_gate/A216_action_replay_admission_gate_v1.json`.
 
+`quality_gate/A216_generated_data_admission_preflight_v1.json` records the
+no-training generated-data admission / conversion preflight. It keeps A216 out
+of the observation-qualified seed queue until the head-camera framing is fixed
+or explicitly accepted in human review.
+
 ## Contents
 
 - `demo_src_r1_turning_on_radio_task_D0/demo.hdf5`: generated candidate demo
@@ -63,6 +74,8 @@ The admission gate summary is in
 - `demo_src_r1_turning_on_radio_task_D0/logs/attempt_00001_succ_1_rate_100.0.json`:
   source attempt log for the successful rollout
 - `quality_gate/*.json`: replay gate inputs and summary
+- `quality_gate/A216_generated_data_admission_preflight_v1.json`: no-training
+  generated replay / conversion preflight
 - `quality_gate/A216_replay_press_760_805.mp4`: replay video for semantic
   review
 - `quality_gate/A216_replay_press_760_805_obs_layout.mp4`: observation-camera

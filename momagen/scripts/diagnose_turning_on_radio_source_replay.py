@@ -19,6 +19,7 @@ import omnigibson as og
 from omnigibson.envs import DataPlaybackWrapper
 from omnigibson.macros import gm
 from omnigibson.object_states import ToggledOn
+from omnigibson.utils import transform_utils as T
 
 
 DEFAULT_DATASET = (
@@ -47,6 +48,14 @@ def _as_float(value):
 
 def _dist(a, b):
     return float(np.linalg.norm(np.asarray(a, dtype=np.float64) - np.asarray(b, dtype=np.float64)))
+
+
+def _unit(vec):
+    vec = np.asarray(vec, dtype=np.float64)
+    norm = float(np.linalg.norm(vec))
+    if norm <= 1e-9:
+        return None
+    return (vec / norm).tolist()
 
 
 class ToggleReplayDiagnosticWrapper(DataPlaybackWrapper):
@@ -178,11 +187,16 @@ class ToggleReplayDiagnosticWrapper(DataPlaybackWrapper):
         marker = getattr(state, "visual_marker", None)
         marker_pos = None
         marker_quat = None
+        marker_rot = None
         marker_radius = None
         if marker is not None:
             marker_pos_raw, marker_quat_raw = marker.get_position_orientation()
             marker_pos = np.asarray(_to_list(marker_pos_raw), dtype=np.float64)
             marker_quat = np.asarray(_to_list(marker_quat_raw), dtype=np.float64)
+            marker_rot = np.asarray(
+                _to_list(T.quat2mat(th.as_tensor(marker_quat, dtype=th.float32))),
+                dtype=np.float64,
+            )
             try:
                 extent = np.asarray(_to_list(getattr(marker, "extent", None)), dtype=np.float64)
                 scale = np.asarray(_to_list(getattr(marker, "scale", None)), dtype=np.float64)
@@ -203,6 +217,7 @@ class ToggleReplayDiagnosticWrapper(DataPlaybackWrapper):
             "marker": {
                 "pos": _to_list(marker_pos),
                 "quat": _to_list(marker_quat),
+                "rot": _to_list(marker_rot),
                 "radius": marker_radius,
                 "prim_path": getattr(marker, "prim_path", None) if marker is not None else None,
             },
@@ -222,15 +237,20 @@ class ToggleReplayDiagnosticWrapper(DataPlaybackWrapper):
                 rows = []
                 for link in links:
                     try:
-                        finger_pos = _to_list(link.get_position_orientation()[0])
+                        finger_pos = np.asarray(_to_list(link.get_position_orientation()[0]), dtype=np.float64)
+                        delta_world = finger_pos - marker_pos
+                        row = {
+                            "link": getattr(link, "name", str(link)),
+                            "body_name": getattr(link, "body_name", None),
+                            "prim_path": getattr(link, "prim_path", None),
+                            "pos": _to_list(finger_pos),
+                            "dist": float(np.linalg.norm(delta_world)),
+                            "delta_world": _to_list(delta_world),
+                        }
+                        if marker_rot is not None:
+                            row["delta_marker_local"] = _to_list(marker_rot.T @ delta_world)
                         rows.append(
-                            {
-                                "link": getattr(link, "name", str(link)),
-                                "body_name": getattr(link, "body_name", None),
-                                "prim_path": getattr(link, "prim_path", None),
-                                "pos": finger_pos,
-                                "dist": _dist(finger_pos, marker_pos),
-                            }
+                            row
                         )
                     except Exception as exc:
                         rows.append({"error": f"{type(exc).__name__}: {exc}"})
@@ -361,6 +381,160 @@ def _summarize(records):
     return summary
 
 
+def _nearest_finger(obj_record, preferred_arm=None):
+    rows_by_arm = obj_record.get("finger_dists_to_marker", {}) or {}
+    candidates = []
+    for arm, rows in rows_by_arm.items():
+        if preferred_arm is not None and arm != preferred_arm:
+            continue
+        if rows and isinstance(rows[0], dict) and isinstance(rows[0].get("dist"), (int, float)):
+            candidates.append((float(rows[0]["dist"]), arm, rows[0]))
+    if not candidates:
+        return None
+    _, arm, row = min(candidates, key=lambda item: item[0])
+    return arm, row
+
+
+def _extract_button_target(summary, records, approach_window=20):
+    """Extract source-demo contact target evidence in marker/object-local terms.
+
+    The first positive `robot_can_toggle_steps` frame is the least ambiguous
+    source of truth: it is the first frame where OmniGibson's actual ToggledOn
+    predicate accepted robot-finger overlap/contact. We then express the nearest
+    triggering finger relative to the visual marker frame and estimate approach
+    direction from prior finger motion.
+    """
+    trigger_step = summary.get("first_can_toggle_step")
+    if trigger_step is None:
+        return {
+            "available": False,
+            "reason": "no_live_toggle_trigger_frame",
+            "first_toggle_value_step": summary.get("first_toggle_value_step"),
+            "max_robot_can_toggle_steps": summary.get("max_robot_can_toggle_steps"),
+        }
+
+    record_by_step = {int(record["step"]): record for record in records}
+    trigger_record = record_by_step.get(int(trigger_step))
+    if trigger_record is None:
+        return {"available": False, "reason": "trigger_frame_not_recorded", "trigger_step": int(trigger_step)}
+
+    best = None
+    for obj_name, obj_record in (trigger_record.get("objects") or {}).items():
+        nearest = _nearest_finger(obj_record)
+        if nearest is None:
+            continue
+        arm, finger = nearest
+        candidate = (float(finger["dist"]), obj_name, arm, finger, obj_record)
+        if best is None or candidate[0] < best[0]:
+            best = candidate
+    if best is None:
+        return {"available": False, "reason": "no_finger_distance_at_trigger", "trigger_step": int(trigger_step)}
+
+    _, obj_name, arm, finger, obj_record = best
+    marker = obj_record.get("marker", {}) or {}
+    marker_pos = marker.get("pos")
+    marker_quat = marker.get("quat")
+    marker_rot = marker.get("rot")
+    finger_pos = finger.get("pos")
+    if marker_pos is None or marker_rot is None or finger_pos is None:
+        return {
+            "available": False,
+            "reason": "missing_marker_or_finger_pose",
+            "trigger_step": int(trigger_step),
+            "object": obj_name,
+            "arm": arm,
+        }
+
+    marker_pos_np = np.asarray(marker_pos, dtype=np.float64)
+    marker_rot_np = np.asarray(marker_rot, dtype=np.float64)
+    finger_pos_np = np.asarray(finger_pos, dtype=np.float64)
+    delta_world = finger_pos_np - marker_pos_np
+    delta_marker_local = marker_rot_np.T @ delta_world
+
+    prior_samples = []
+    start_step = max(0, int(trigger_step) - int(approach_window))
+    for step in range(start_step, int(trigger_step)):
+        prev = record_by_step.get(step)
+        if prev is None:
+            continue
+        prev_obj = (prev.get("objects") or {}).get(obj_name)
+        if prev_obj is None:
+            continue
+        prev_nearest = _nearest_finger(prev_obj, preferred_arm=arm)
+        if prev_nearest is None:
+            continue
+        _, prev_finger = prev_nearest
+        if prev_finger.get("link") != finger.get("link") or prev_finger.get("pos") is None:
+            continue
+        prev_marker = prev_obj.get("marker", {}) or {}
+        if prev_marker.get("pos") is None or prev_marker.get("rot") is None:
+            continue
+        prev_marker_pos = np.asarray(prev_marker["pos"], dtype=np.float64)
+        prev_marker_rot = np.asarray(prev_marker["rot"], dtype=np.float64)
+        prev_finger_pos = np.asarray(prev_finger["pos"], dtype=np.float64)
+        prev_local = prev_marker_rot.T @ (prev_finger_pos - prev_marker_pos)
+        prior_samples.append(
+            {
+                "step": int(step),
+                "finger_pos_world": prev_finger_pos,
+                "finger_delta_marker_local": prev_local,
+                "dist": float(prev_finger.get("dist")),
+            }
+        )
+
+    approach = {"available": False, "reason": "insufficient_prior_samples"}
+    if prior_samples:
+        first = prior_samples[0]
+        motion_world = finger_pos_np - first["finger_pos_world"]
+        motion_marker_local = delta_marker_local - first["finger_delta_marker_local"]
+        approach = {
+            "available": True,
+            "window_start_step": int(first["step"]),
+            "window_end_step": int(trigger_step),
+            "num_prior_samples": len(prior_samples),
+            "motion_world": _to_list(motion_world),
+            "motion_world_unit": _unit(motion_world),
+            "motion_marker_local": _to_list(motion_marker_local),
+            "motion_marker_local_unit": _unit(motion_marker_local),
+            "start_finger_delta_marker_local": _to_list(first["finger_delta_marker_local"]),
+            "start_dist": float(first["dist"]),
+            "end_dist": float(finger["dist"]),
+        }
+
+    return {
+        "available": True,
+        "trigger_step": int(trigger_step),
+        "trigger_source": "first_can_toggle_step"
+        if summary.get("first_can_toggle_step") is not None
+        else "first_toggle_value_step",
+        "object": obj_name,
+        "arm": arm,
+        "finger": {
+            "link": finger.get("link"),
+            "body_name": finger.get("body_name"),
+            "prim_path": finger.get("prim_path"),
+        },
+        "marker": {
+            "pos": marker_pos,
+            "quat": marker_quat,
+            "radius": marker.get("radius"),
+            "prim_path": marker.get("prim_path"),
+        },
+        "target": {
+            "finger_pos_world": finger_pos,
+            "finger_delta_world": _to_list(delta_world),
+            "finger_delta_marker_local": _to_list(delta_marker_local),
+            "finger_dist_to_marker": float(finger["dist"]),
+        },
+        "predicate": {
+            "robot_can_toggle_steps": int(obj_record.get("robot_can_toggle_steps", 0)),
+            "toggled_value": bool(obj_record.get("value")),
+            "obj_in_finger_contact_objs": obj_record.get("obj_in_finger_contact_objs"),
+        },
+        "approach": approach,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default=DEFAULT_DATASET)
@@ -369,6 +543,7 @@ def main():
     parser.add_argument("--radii", default=",".join(str(radius) for radius in DEFAULT_RADII))
     parser.add_argument("--max-hit-records", type=int, default=20)
     parser.add_argument("--record-step-snapshots", action="store_true")
+    parser.add_argument("--approach-window", type=int, default=20)
     args = parser.parse_args()
 
     gm.ENABLE_TRANSITION_RULES = False
@@ -399,6 +574,7 @@ def main():
         env.playback_episode(episode_id=args.episode_id, record_data=True)
         records = env.records
         summary = _summarize(records)
+        button_target = _extract_button_target(summary, records, approach_window=args.approach_window)
         payload = {
             "dataset": args.dataset,
             "episode_id": args.episode_id,
@@ -406,12 +582,14 @@ def main():
             "source_attrs": {key: str(value)[:500] for key, value in source_attrs.items()},
             "radii": list(radii),
             "summary": summary,
+            "button_target": button_target,
             "records": records if args.record_step_snapshots else [records[i] for i in summary["interesting_steps"]],
         }
         os.makedirs(os.path.dirname(args.output), exist_ok=True)
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)
         print(json.dumps(summary, indent=2))
+        print(json.dumps({"button_target": button_target}, indent=2))
         print(f"Wrote {args.output}")
     finally:
         try:

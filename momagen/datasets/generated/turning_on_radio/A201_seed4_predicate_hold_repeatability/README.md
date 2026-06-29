@@ -13,6 +13,12 @@ BEHAVIOR-1K `turning_on_radio` task.
 - Human semantic review: passed. The reviewer confirmed that both the action
   trajectory and observation-layout data are sufficiently clear for the
   `780..811` press / contact window.
+- Generated replay admission: passed on the current asset version. The
+  no-training preflight records `generated_replay_admitted=true` and now
+  includes true-button replay admission as a hard generated-replay gate.
+- Conversion / training status: still closed. The current preflight records
+  `conversion_eligible=false` because this candidate has not been promoted
+  through a BEHAVIOR strict simulator admission report for training conversion.
 - Main caveat: the quality record shows the task predicate is already true at
   Phase 2 entry, followed by a Phase 2 TrajOpt failure. Keep this caveat in the
   admission record, but A201 is now the first observation-qualified seed for
@@ -47,11 +53,18 @@ The admission gate summary is in
 `quality_gate/A201_action_replay_admission_gate_v1.json`.
 
 `quality_gate/A201_generated_data_admission_preflight_v1.json` records the
-next generated-data admission / conversion preflight. It intentionally keeps
-`conversion_eligible=false`: A201 is observation-qualified and human-reviewed,
-but it still lacks a strict BEHAVIOR
-`p0_simulator_verifier_admission` report and an openpi-comet lineage mapping for
-MoMaGen R1Pro 23D output.
+generated-data admission / conversion preflight. It now separates the two
+decisions explicitly:
+
+- `generated_replay_admitted=true`: A201 is accepted as an
+  observation-qualified generated replay seed on the current asset version.
+- `true_button_replay_admission.accepted=true`: the long-window replay records
+  primary overlap at step `807`, `max_robot_can_toggle_steps=5`,
+  `ToggledOn=True` at step `811`, task success observed, and best left-finger
+  distance to true overlap `0.01427403846702593`.
+- `conversion_eligible=false`: A201 is not yet a training/conversion candidate.
+  The remaining blocker is the missing promotion-time BEHAVIOR strict simulator
+  admission report.
 
 The fuller-window diagnostic was generated in headless mode because the local
 Kit viewer path intermittently fails during swapchain initialization. This is a

@@ -1,9 +1,10 @@
 {
   "manifest_type": "momagen_generated_data_admission_preflight_v1",
-  "generated_at_utc": "2026-06-21T15:09:11Z",
+  "generated_at_utc": "2026-06-24T03:01:48Z",
   "candidate": "A201_seed4_predicate_hold_repeatability",
   "task": "turning_on_radio",
   "status": "observation_qualified_not_conversion_eligible",
+  "generated_replay_admitted": true,
   "conversion_eligible": false,
   "auto_training_enabled": false,
   "real_training_enabled": false,
@@ -140,6 +141,38 @@
           "mean_object_pixel_fraction": 0.0322845458984375
         }
       }
+    },
+    "true_button_replay_admission": {
+      "available": true,
+      "accepted": true,
+      "passes": [
+        "long_window_reproduces_predicate_hold",
+        "near_checkpoint_reproduces_predicate_hold",
+        "robot_can_toggle_steps_positive",
+        "task_success_observed",
+        "toggle_value_true_observed",
+        "true_button_primary_overlap_observed"
+      ],
+      "warnings": [
+        "primary_to_relaxed_overlap_boundary_sensitive"
+      ],
+      "failures": [],
+      "metrics": {
+        "long_window_class": "pass",
+        "near_checkpoint_class": "pass",
+        "first_primary_overlap_step": 807,
+        "first_can_toggle_step": 807,
+        "first_toggle_value_step": 811,
+        "first_task_success_step": 780,
+        "max_robot_can_toggle_steps": 5,
+        "best_left_finger_dist": {
+          "step": 811,
+          "object": "radio_89",
+          "dist": 0.01427403846702593,
+          "link": "robot_r1:left_gripper_finger_link2"
+        }
+      },
+      "note": "This gate requires runtime true-button contact evidence from action replay: primary overlap, positive robot_can_toggle_steps, ToggledOn value, and task success."
     }
   },
   "media": {
@@ -154,6 +187,59 @@
       "bytes": 248138
     }
   },
+  "generated_replay_admission": {
+    "available": true,
+    "accepted": true,
+    "passes": [
+      "critical_window_visibility_metrics_present",
+      "hdf5_actions_states_canonical_and_finite",
+      "human_semantic_review_passed",
+      "momagen_action_observation_gate_admits_seed",
+      "review_videos_present",
+      "true_button_replay_admission_passed"
+    ],
+    "warnings": [
+      "full_window_head_camera_contact_marker_visibility_below_threshold",
+      "full_window_head_camera_marker_in_frame_only_15_of_32_frames",
+      "initial_snapshot_task_success_likely_predicate_cache_artifact",
+      "primary_overlap_radius_boundary_sensitive",
+      "true_button_primary_to_relaxed_overlap_boundary_sensitive"
+    ],
+    "failures": [],
+    "note": "This is the current-asset generated replay / human review admission. It is sufficient to keep the episode as an observation-qualified generated seed, but it does not by itself open training conversion."
+  },
+  "true_button_replay_admission": {
+    "available": true,
+    "accepted": true,
+    "passes": [
+      "long_window_reproduces_predicate_hold",
+      "near_checkpoint_reproduces_predicate_hold",
+      "robot_can_toggle_steps_positive",
+      "task_success_observed",
+      "toggle_value_true_observed",
+      "true_button_primary_overlap_observed"
+    ],
+    "warnings": [
+      "primary_to_relaxed_overlap_boundary_sensitive"
+    ],
+    "failures": [],
+    "metrics": {
+      "long_window_class": "pass",
+      "near_checkpoint_class": "pass",
+      "first_primary_overlap_step": 807,
+      "first_can_toggle_step": 807,
+      "first_toggle_value_step": 811,
+      "first_task_success_step": 780,
+      "max_robot_can_toggle_steps": 5,
+      "best_left_finger_dist": {
+        "step": 811,
+        "object": "radio_89",
+        "dist": 0.01427403846702593,
+        "link": "robot_r1:left_gripper_finger_link2"
+      }
+    },
+    "note": "This gate requires runtime true-button contact evidence from action replay: primary overlap, positive robot_can_toggle_steps, ToggledOn value, and task success."
+  },
   "strict_behavior_admission": {
     "available": false,
     "passes": [],
@@ -164,9 +250,18 @@
   "openpi_lineage_preflight": {
     "proposed_source_type": "momagen_r1pro_23d",
     "action_source": "r1pro_23d",
-    "lineage_compatible_with_current_openpi_contract": false,
-    "allowed_action_sources_for_proposed_type": null,
-    "note": "A MoMaGen R1Pro-23D candidate still needs an explicit source_type/action_source mapping accepted by openpi-comet before training-candidate manifest generation."
+    "lineage_compatible_with_current_openpi_contract": true,
+    "allowed_action_sources_for_proposed_type": [
+      "r1pro_23d"
+    ],
+    "note": "This mirrors the current openpi-comet generated-data lineage source/action compatibility table."
+  },
+  "training_conversion_preflight": {
+    "eligible": false,
+    "failures": [
+      "strict_simulator_admission_report_missing"
+    ],
+    "note": "Training/conversion remains closed until strict BEHAVIOR simulator admission is available, even when generated replay admission has accepted the seed."
   },
   "verdict": {
     "passes": [
@@ -174,22 +269,24 @@
       "hdf5_actions_states_canonical_and_finite",
       "human_semantic_review_passed",
       "momagen_action_observation_gate_admits_seed",
-      "review_videos_present"
+      "review_videos_present",
+      "true_button_replay_admission_passed"
     ],
     "warnings": [
       "full_window_head_camera_contact_marker_visibility_below_threshold",
       "full_window_head_camera_marker_in_frame_only_15_of_32_frames",
       "initial_snapshot_task_success_likely_predicate_cache_artifact",
-      "primary_overlap_radius_boundary_sensitive"
+      "primary_overlap_radius_boundary_sensitive",
+      "true_button_primary_to_relaxed_overlap_boundary_sensitive"
     ],
     "blockers": [
-      "openpi_generated_data_lineage_mapping_unresolved",
       "strict_simulator_admission_report_missing"
     ]
   },
   "next_actions": [
-    "Materialize a BEHAVIOR strict simulator admission report for the A201 replay/action artifact.",
-    "Resolve or add the openpi-comet generated_data_lineage source_type/action_source mapping for MoMaGen R1Pro-23D output.",
+    "Keep this candidate as a generated replay / observation-qualified seed on the current asset version.",
+    "For turning_on_radio, keep true-button replay admission fail-closed on primary overlap, robot_can_toggle_steps, task success, and videos.",
+    "Materialize a BEHAVIOR strict simulator admission report only when promoting the seed toward conversion/training.",
     "Only after strict admission and lineage compatibility pass, emit a b1k_generated_data_training_candidate manifest for loader/conversion smoke.",
     "Reuse this preflight on A217/A218 or historical successful candidates before scheduling expensive replay/admission work."
   ]

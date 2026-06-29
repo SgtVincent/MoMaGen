@@ -13,6 +13,40 @@ provide observation evidence for semantic review:
   and head camera on the right,
 - per-camera visibility metrics for the radio object and switch/contact marker.
 
+When rerunning a key generation experiment, set `write_video=True` where the
+launcher or config supports it. Include the third-view and sensor /
+observation-layout video paths in the experiment handoff so the sim execution
+trajectory can be reviewed before admitting the candidate.
+
+## Generated trajectory quality gate
+
+For coordinated bimanual contact-rich tasks, endpoint success and task success
+are not sufficient admission signals. A candidate can press the predicate while
+the held object, inactive EE, base, or torso make large redundant loops that
+leave the camera frustum and make contact semantics impossible to review.
+
+Before action/observation replay admission, export no-simulator trajectory
+metrics from the generated HDF5 and run the generated trajectory quality gate:
+
+```bash
+python momagen/scripts/debug/export_generated_trajectory_quality.py \
+  --dataset momagen/datasets/generated/turning_on_radio/<candidate>/demo_src_r1_turning_on_radio_task_D0/demo.hdf5 \
+  --output-dir momagen/datasets/generated/turning_on_radio/<candidate>/trajectory_quality
+
+python momagen/scripts/quality_gates/build_generated_trajectory_quality_gate.py \
+  --candidate <candidate> \
+  --metrics momagen/datasets/generated/turning_on_radio/<candidate>/trajectory_quality/trajectory_quality_metrics.json \
+  --require-camera-framing-review \
+  --output momagen/datasets/generated/turning_on_radio/<candidate>/quality_gate/<candidate>_trajectory_quality_gate_v1.json
+```
+
+This gate currently fails closed on excessive held-object / EE path-to-net
+ratios, long post-MP held-object path, excessive post-MP base path, missing
+critical tracks, and missing camera-framing review. It is intentionally
+conservative for `turning_on_radio`: A277/A281 style samples with 100% pipeline
+success but large `phase2_after_mp` radio/EE loops must remain diagnostic-only
+until the execution trajectory is visually reviewable.
+
 Example:
 
 ```bash
@@ -59,12 +93,17 @@ python momagen/scripts/quality_gates/build_generated_data_preflight_manifest.py 
 
 The preflight checks that the generated HDF5 has finite canonical R1Pro 23D
 actions/states, that the MoMaGen gate admits the seed, that review videos exist,
-and that critical-window visibility and human semantic review are present. It
-also reuses the current openpi-comet strict admission contract and fails closed
-unless there is a strict `p0_simulator_verifier_admission` report.
+that critical-window visibility and human semantic review are present, and that
+the action replay gate contains true-button contact evidence. For
+`turning_on_radio`, generated replay admission fails closed unless the replay
+summary has primary overlap, positive `robot_can_toggle_steps`, `ToggledOn=True`,
+and task success. It also reuses the current openpi-comet strict admission
+contract and fails closed for training conversion unless there is a strict
+`p0_simulator_verifier_admission` report.
 
 For A201 this is expected to report
 `observation_qualified_not_conversion_eligible`: the seed is a good next
 admission candidate, but it is not yet a `b1k_generated_data_training_candidate`
-and must not be converted to RFT parquet until strict simulator admission and an
-explicit generated-data lineage mapping are available.
+and must not be converted to RFT parquet until strict simulator admission is
+available. Its generated-data lineage is already compatible with the current
+openpi-comet source/action contract.

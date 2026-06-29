@@ -2,9 +2,10 @@
 """Build a conservative generated-data admission/conversion preflight manifest.
 
 This check is intentionally no-simulator and no-training. It audits whether a
-MoMaGen quality-gated candidate has enough evidence to be queued for the next
-BEHAVIOR / openpi-comet admission step, and it fails closed when strict
-simulator admission is missing.
+MoMaGen quality-gated candidate has enough evidence to be kept as a generated
+replay seed, and separately whether it can be queued for BEHAVIOR/openpi-comet
+conversion. Conversion still fails closed when strict simulator admission is
+missing.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ OPENPI_ALLOWED_GENERATED_ACTION_SOURCES = {
     "demo_ee_trajectory": {"r1pro_23d"},
     "wm_keyposes": {"r1pro_23d"},
     "momagen_bimanual": {"momagen_bimanual_16d", "momagen_16d_to_r1pro_23d"},
+    "momagen_r1pro_23d": {"r1pro_23d"},
     "curobo_plan": {"r1pro_23d"},
     "geometry_base_prior": {"r1pro_23d"},
     "geometry_base_prior_momagen_bimanual": {"r1pro_23d"},
@@ -179,6 +181,90 @@ def strict_admission_checks(report: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def action_replay_true_button_checks(gate: dict[str, Any]) -> dict[str, Any]:
+    """Fail-closed replay admission checks for real button contact evidence."""
+    derived = gate.get("derived") if isinstance(gate.get("derived"), dict) else {}
+    inputs = gate.get("inputs") if isinstance(gate.get("inputs"), dict) else {}
+    quality = gate.get("quality_verdict") if isinstance(gate.get("quality_verdict"), dict) else {}
+    passes: list[str] = []
+    failures: list[str] = []
+    warnings: list[str] = []
+
+    def _summary(name: str) -> dict[str, Any]:
+        item = inputs.get(name) if isinstance(inputs.get(name), dict) else {}
+        summary = item.get("summary") if isinstance(item.get("summary"), dict) else {}
+        return summary
+
+    long_summary = _summary("long_window")
+    near_summary = _summary("near_checkpoint")
+    long_class = derived.get("long_window_class")
+    near_class = derived.get("near_checkpoint_class")
+    quality_passes = set(quality.get("passes") if isinstance(quality.get("passes"), list) else [])
+
+    if long_class == "pass" or "long_precontact_window_reproduces_5_step_hold" in quality_passes:
+        passes.append("long_window_reproduces_predicate_hold")
+    else:
+        failures.append("long_window_missing_predicate_hold")
+
+    if near_summary:
+        if near_class == "pass" or "near_contact_checkpoint_reproduces_5_step_hold" in quality_passes:
+            passes.append("near_checkpoint_reproduces_predicate_hold")
+        else:
+            failures.append("near_checkpoint_missing_predicate_hold")
+    else:
+        warnings.append("near_checkpoint_summary_missing")
+
+    first_primary_overlap_step = long_summary.get("first_primary_overlap_step")
+    if first_primary_overlap_step is not None:
+        passes.append("true_button_primary_overlap_observed")
+    else:
+        failures.append("true_button_primary_overlap_missing")
+
+    max_robot_can_toggle_steps = int(long_summary.get("max_robot_can_toggle_steps") or 0)
+    if max_robot_can_toggle_steps > 0:
+        passes.append("robot_can_toggle_steps_positive")
+    else:
+        failures.append("robot_can_toggle_steps_missing")
+
+    first_toggle_value_step = long_summary.get("first_toggle_value_step")
+    if first_toggle_value_step is not None:
+        passes.append("toggle_value_true_observed")
+    else:
+        failures.append("toggle_value_true_missing")
+
+    first_task_success_step = long_summary.get("first_task_success_step")
+    if first_task_success_step is not None:
+        passes.append("task_success_observed")
+    else:
+        failures.append("task_success_missing")
+
+    boundary = derived.get("primary_to_relaxed_overlap_boundary_steps")
+    if isinstance(boundary, dict) and int(boundary.get("count") or 0) > 0:
+        warnings.append("primary_to_relaxed_overlap_boundary_sensitive")
+
+    return {
+        "available": bool(long_summary),
+        "accepted": bool(long_summary) and not failures,
+        "passes": sorted(set(passes)),
+        "warnings": sorted(set(warnings)),
+        "failures": sorted(set(failures)),
+        "metrics": {
+            "long_window_class": long_class,
+            "near_checkpoint_class": near_class,
+            "first_primary_overlap_step": first_primary_overlap_step,
+            "first_can_toggle_step": long_summary.get("first_can_toggle_step"),
+            "first_toggle_value_step": first_toggle_value_step,
+            "first_task_success_step": first_task_success_step,
+            "max_robot_can_toggle_steps": max_robot_can_toggle_steps,
+            "best_left_finger_dist": long_summary.get("best_left_finger_dist"),
+        },
+        "note": (
+            "This gate requires runtime true-button contact evidence from action replay: "
+            "primary overlap, positive robot_can_toggle_steps, ToggledOn value, and task success."
+        ),
+    }
+
+
 def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
     dataset = Path(args.dataset)
     gate_path = Path(args.momagen_gate)
@@ -190,6 +276,7 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
     hdf5 = inspect_hdf5(dataset)
     strict_report = load_json(Path(args.strict_admission_report)) if args.strict_admission_report else None
     strict = strict_admission_checks(strict_report)
+    true_button = action_replay_true_button_checks(gate)
 
     action_source = "r1pro_23d" if nested(hdf5, "actions", "shape", default=[])[-1:] == [23] else "unknown"
     proposed_source_type = args.proposed_source_type
@@ -206,27 +293,34 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
         if not info or info.get("exists") is not True or not info.get("bytes")
     ]
 
-    blockers: list[str] = []
+    observation_blockers: list[str] = []
+    conversion_blockers: list[str] = []
     warnings: list[str] = []
     passes: list[str] = []
 
     if hdf5.get("errors"):
-        blockers.extend(f"hdf5_{err}" for err in hdf5["errors"])
+        observation_blockers.extend(f"hdf5_{err}" for err in hdf5["errors"])
     else:
         passes.append("hdf5_actions_states_canonical_and_finite")
 
     if quality.get("admission_recommendation") == "admit_observation_qualified_seed_for_generated_data_pipeline":
         passes.append("momagen_action_observation_gate_admits_seed")
     else:
-        blockers.append("momagen_action_observation_gate_not_admitted")
+        observation_blockers.append("momagen_action_observation_gate_not_admitted")
 
     if human_review.get("status") == "passed":
         passes.append("human_semantic_review_passed")
     else:
-        blockers.append("human_semantic_review_missing_or_not_passed")
+        observation_blockers.append("human_semantic_review_missing_or_not_passed")
+
+    if true_button["failures"]:
+        observation_blockers.extend(f"true_button_{failure}" for failure in true_button["failures"])
+    else:
+        passes.append("true_button_replay_admission_passed")
+    warnings.extend(f"true_button_{warning}" for warning in true_button["warnings"])
 
     if video_failures:
-        blockers.extend(video_failures)
+        observation_blockers.extend(video_failures)
     else:
         passes.append("review_videos_present")
 
@@ -234,26 +328,24 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
     if isinstance(critical, dict) and critical.get("visibility"):
         passes.append("critical_window_visibility_metrics_present")
     else:
-        blockers.append("critical_window_visibility_metrics_missing")
+        observation_blockers.append("critical_window_visibility_metrics_missing")
 
     if strict["failures"]:
-        blockers.extend(strict["failures"])
+        conversion_blockers.extend(strict["failures"])
     else:
         passes.append("strict_behavior_simulator_admission_passed")
 
     if not lineage_compatible:
-        blockers.append("openpi_generated_data_lineage_mapping_unresolved")
+        conversion_blockers.append("openpi_generated_data_lineage_mapping_unresolved")
 
     warnings.extend(quality.get("warnings") if isinstance(quality.get("warnings"), list) else [])
 
-    conversion_eligible = not blockers
+    generated_replay_admitted = not observation_blockers
+    conversion_eligible = generated_replay_admitted and not conversion_blockers
+    blockers = observation_blockers + conversion_blockers
     if conversion_eligible:
         status = "strict_admission_ready_for_training_candidate_manifest"
-    elif (
-        "momagen_action_observation_gate_admits_seed" in passes
-        and "human_semantic_review_passed" in passes
-        and "critical_window_visibility_metrics_present" in passes
-    ):
+    elif generated_replay_admitted:
         status = "observation_qualified_not_conversion_eligible"
     else:
         status = "blocked_before_observation_qualified_seed"
@@ -264,6 +356,7 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
         "candidate": args.candidate,
         "task": args.task,
         "status": status,
+        "generated_replay_admitted": generated_replay_admitted,
         "conversion_eligible": conversion_eligible,
         "auto_training_enabled": False,
         "real_training_enabled": False,
@@ -285,8 +378,22 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
             "blockers": quality.get("blockers", []),
             "human_semantic_review": human_review,
             "critical_window": derived.get("obs_visibility_critical_window"),
+            "true_button_replay_admission": true_button,
         },
         "media": videos,
+        "generated_replay_admission": {
+            "available": True,
+            "accepted": generated_replay_admitted,
+            "passes": sorted(set(passes) - {"strict_behavior_simulator_admission_passed"}),
+            "warnings": sorted(set(warnings)),
+            "failures": sorted(set(observation_blockers)),
+            "note": (
+                "This is the current-asset generated replay / human review admission. "
+                "It is sufficient to keep the episode as an observation-qualified generated seed, "
+                "but it does not by itself open training conversion."
+            ),
+        },
+        "true_button_replay_admission": true_button,
         "strict_behavior_admission": strict,
         "openpi_lineage_preflight": {
             "proposed_source_type": proposed_source_type,
@@ -294,8 +401,15 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
             "lineage_compatible_with_current_openpi_contract": lineage_compatible,
             "allowed_action_sources_for_proposed_type": sorted(allowed_actions) if allowed_actions else None,
             "note": (
-                "A MoMaGen R1Pro-23D candidate still needs an explicit source_type/action_source mapping "
-                "accepted by openpi-comet before training-candidate manifest generation."
+                "This mirrors the current openpi-comet generated-data lineage source/action compatibility table."
+            ),
+        },
+        "training_conversion_preflight": {
+            "eligible": conversion_eligible,
+            "failures": sorted(set(conversion_blockers)),
+            "note": (
+                "Training/conversion remains closed until strict BEHAVIOR simulator admission is available, "
+                "even when generated replay admission has accepted the seed."
             ),
         },
         "verdict": {
@@ -304,8 +418,9 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
             "blockers": sorted(set(blockers)),
         },
         "next_actions": [
-            "Materialize a BEHAVIOR strict simulator admission report for the A201 replay/action artifact.",
-            "Resolve or add the openpi-comet generated_data_lineage source_type/action_source mapping for MoMaGen R1Pro-23D output.",
+            "Keep this candidate as a generated replay / observation-qualified seed on the current asset version.",
+            "For turning_on_radio, keep true-button replay admission fail-closed on primary overlap, robot_can_toggle_steps, task success, and videos.",
+            "Materialize a BEHAVIOR strict simulator admission report only when promoting the seed toward conversion/training.",
             "Only after strict admission and lineage compatibility pass, emit a b1k_generated_data_training_candidate manifest for loader/conversion smoke.",
             "Reuse this preflight on A217/A218 or historical successful candidates before scheduling expensive replay/admission work.",
         ],

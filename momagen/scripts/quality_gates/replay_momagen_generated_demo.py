@@ -85,9 +85,12 @@ def _snapshot(env, step, ref_state=None, target_objects=None):
             continue
         state=obj.states[ToggledOn]
         marker=getattr(state,'visual_marker',None)
-        marker_pos=None; marker_radius=None
+        marker_pos=None; marker_quat=None; marker_radius=None; overlap_pos=None; overlap_local_offset=None
         if marker is not None:
-            marker_pos=np.asarray(_to_list(marker.get_position_orientation()[0]), dtype=float)
+            marker_pose = marker.get_position_orientation()
+            marker_pos=np.asarray(_to_list(marker_pose[0]), dtype=float)
+            marker_quat=np.asarray(_to_list(marker_pose[1]), dtype=float)
+            overlap_pos = marker_pos
             try:
                 marker_radius=float(np.min(np.asarray(_to_list(marker.extent),dtype=float)*np.asarray(_to_list(marker.scale),dtype=float)))
             except Exception as e:
@@ -102,25 +105,57 @@ def _snapshot(env, step, ref_state=None, target_objects=None):
             'robot_can_toggle_steps': int(getattr(state,'robot_can_toggle_steps',-1)),
             'obj_in_finger_contact_objs': obj_in_contact,
             'marker_pos': _to_list(marker_pos),
+            'marker_quat': _to_list(marker_quat),
+            'overlap_pos': _to_list(overlap_pos),
+            'overlap_local_offset': overlap_local_offset,
             'marker_radius': marker_radius,
             'finger_min_dist_to_marker': {},
+            'finger_min_dist_to_overlap': {},
             'overlap_primary_hit': None,
             'overlap_first_hit_radius': None,
             'overlap_probes': [],
         }
-        if robot is not None and marker_pos is not None:
+        if robot is not None and overlap_pos is not None:
             finger_paths={getattr(link,'prim_path',None) for links in getattr(robot,'finger_links',{}).values() for link in links}
             finger_paths.discard(None)
             row['finger_paths'] = sorted(finger_paths)
+            marker_rot = None
+            if marker_quat is not None:
+                marker_rot = np.asarray(_to_list(T.quat2mat(th.as_tensor(marker_quat, dtype=th.float32))), dtype=float)
             for arm,links in getattr(robot,'finger_links',{}).items():
-                vals=[]
+                vals=[]; overlap_vals=[]
                 for link in links:
                     try:
-                        vals.append({'link': getattr(link,'name',str(link)), 'prim_path': getattr(link,'prim_path',None), 'dist': _dist(_to_list(link.get_position_orientation()[0]), marker_pos)})
+                        link_pos = np.asarray(_to_list(link.get_position_orientation()[0]), dtype=float)
+                        marker_delta = link_pos - marker_pos
+                        overlap_delta = link_pos - overlap_pos
+                        base = {
+                            'link': getattr(link,'name',str(link)),
+                            'prim_path': getattr(link,'prim_path',None),
+                            'pos': _to_list(link_pos),
+                        }
+                        marker_row = {
+                            **base,
+                            'dist': float(np.linalg.norm(marker_delta)),
+                            'delta_world': _to_list(marker_delta),
+                        }
+                        overlap_row = {
+                            **base,
+                            'dist': float(np.linalg.norm(overlap_delta)),
+                            'delta_world': _to_list(overlap_delta),
+                        }
+                        if marker_rot is not None:
+                            marker_row['delta_marker_local'] = _to_list(marker_rot.T @ marker_delta)
+                            overlap_row['delta_marker_local'] = _to_list(marker_rot.T @ overlap_delta)
+                        vals.append(marker_row)
+                        overlap_vals.append(overlap_row)
                     except Exception as e:
                         vals.append({'error': f'{type(e).__name__}: {e}'})
+                        overlap_vals.append({'error': f'{type(e).__name__}: {e}'})
                 vals=[v for v in vals if 'dist' in v]
+                overlap_vals=[v for v in overlap_vals if 'dist' in v]
                 row['finger_min_dist_to_marker'][arm]=min(vals,key=lambda x:x['dist']) if vals else None
+                row['finger_min_dist_to_overlap'][arm]=min(overlap_vals,key=lambda x:x['dist']) if overlap_vals else None
             radii=[marker_radius,0.03,0.05,0.075,0.10,0.125,0.15] if isinstance(marker_radius,float) else [0.03,0.05,0.075,0.10,0.125,0.15]
             seen=[]
             for radius in radii:
@@ -137,7 +172,7 @@ def _snapshot(env, step, ref_state=None, target_objects=None):
                     if len(hits)<64: hits.append({'rigid_body':rb,'is_robot_finger':is_finger})
                     return True
                 try:
-                    og.sim.psqi.overlap_sphere(radius=float(radius), pos=marker_pos.tolist(), reportFn=report)
+                    og.sim.psqi.overlap_sphere(radius=float(radius), pos=overlap_pos.tolist(), reportFn=report)
                     row['overlap_probes'].append({
                         'radius': float(radius),
                         'valid_robot_finger_hit': bool(valid),
@@ -189,7 +224,7 @@ def summarize(records):
                 summary['first_can_toggle_step']=step
             if row.get('overlap_primary_hit') and summary['first_primary_overlap_step'] is None:
                 summary['first_primary_overlap_step']=step
-            left=(row.get('finger_min_dist_to_marker') or {}).get('left')
+            left=(row.get('finger_min_dist_to_overlap') or row.get('finger_min_dist_to_marker') or {}).get('left')
             if isinstance(left,dict) and isinstance(left.get('dist'),(int,float)) and left['dist']<best:
                 best=left['dist']; summary['best_left_finger_dist']={'step':step,'object':obj,'dist':left['dist'],'link':left.get('link')}
             for cam_name, vis in (row.get('observation_visibility') or {}).items():
