@@ -1,8 +1,13 @@
 from types import SimpleNamespace
 
 import torch as th
+import omnigibson.utils.transform_utils as T
 
-from momagen.datagen.waypoint import maybe_apply_phase_routing_target_precontact, select_phase_routing_nav_eef_pose
+from momagen.datagen.waypoint import (
+    maybe_apply_phase_routing_target_precontact,
+    maybe_apply_phase_routing_target_precontact_to_maps,
+    select_phase_routing_nav_eef_pose,
+)
 
 
 class _FakeObject:
@@ -237,6 +242,150 @@ def test_phase_routing_target_precontact_can_add_clearance_link_goal(monkeypatch
     assert record["clearance_link_frame"] == "world"
     assert record["arms"][0]["clearance_link_goals"][0]["applied"] is True
     assert record["arms"][0]["clearance_link_goals"][0]["link"] == "right_arm_link4"
+
+
+def test_phase_routing_target_precontact_can_add_posture_constraint(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_APPROACH_VECTOR", "1,0,0")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_AXIS", "-z")
+    quat = th.tensor([0.0, 0.0, 0.0, 1.0])
+    target_pose = {"right": (th.tensor([1.0, 0.0, 0.0]), quat)}
+
+    adjusted, record = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=SimpleNamespace(execution_phase_ind=0),
+        ref_obj=_FakeObject([0.0, 0.0, 0.0]),
+    )
+
+    target_rot = th.as_tensor(T.quat2mat(adjusted["right"][1]))
+    assert th.allclose(-target_rot[:, 2], th.tensor([1.0, 0.0, 0.0]), atol=1e-5)
+    assert record["posture"]["enabled"] is True
+    assert record["posture"]["records"][0]["applied"] is True
+    assert record["posture"]["records"][0]["link"] == "right"
+    assert record["posture"]["records"][0]["axis"] == "-z"
+
+
+def test_phase_routing_target_precontact_posture_can_target_explicit_link(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_APPROACH_VECTOR", "0,1,0")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FORCE_FINGER_LINK", "right_gripper_finger_link1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_LINKS", "right_gripper_finger_link1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_AXIS", "x")
+    quat = th.tensor([0.0, 0.0, 0.0, 1.0])
+    target_pose = {"right": (th.tensor([1.0, 0.0, 0.0]), quat)}
+    finger_link = _FakeLink(
+        "robot:right_gripper_finger_link1",
+        "right_gripper_finger_link1",
+    )
+    robot = SimpleNamespace(
+        finger_links={"right": [finger_link]},
+        links={"right_gripper_finger_link1": finger_link},
+    )
+
+    adjusted, record = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=SimpleNamespace(execution_phase_ind=0, robot=robot),
+        ref_obj=_FakeObject([0.0, 0.0, 0.0]),
+    )
+
+    target_rot = th.as_tensor(T.quat2mat(adjusted["right_gripper_finger_link1"][1]))
+    assert th.allclose(target_rot[:, 0], th.tensor([0.0, 1.0, 0.0]), atol=1e-5)
+    assert record["posture"]["records"][0]["link"] == "right_gripper_finger_link1"
+    assert record["posture"]["records"][0]["applied"] is True
+
+
+def test_phase_routing_target_precontact_posture_without_approach_fails_closed(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE", "1")
+    target_pose = {"right": (th.tensor([1.0, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))}
+
+    adjusted, record = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=SimpleNamespace(execution_phase_ind=0),
+        ref_obj=_FakeObject([0.0, 0.0, 0.0]),
+    )
+
+    assert adjusted["right"][1] is target_pose["right"][1]
+    assert record["posture"]["records"][0] == {
+        "link": "right",
+        "applied": False,
+        "reason": "missing_approach_vector",
+    }
+
+
+def test_phase_routing_target_precontact_map_adapter_adds_new_link_targets(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_APPROACH_VECTOR", "0,1,0")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FORCE_FINGER_LINK", "right_gripper_finger_link1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_LINKS", "right_gripper_finger_link1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_AXIS", "x")
+    quat = th.tensor([0.0, 0.0, 0.0, 1.0])
+    target_pos = {"right": th.tensor([1.0, 0.0, 0.0])}
+    target_quat = {"right": quat}
+    finger_link = _FakeLink(
+        "robot:right_gripper_finger_link1",
+        "right_gripper_finger_link1",
+    )
+    robot = SimpleNamespace(
+        finger_links={"right": [finger_link]},
+        links={"right_gripper_finger_link1": finger_link},
+    )
+
+    record = maybe_apply_phase_routing_target_precontact_to_maps(
+        target_pos,
+        target_quat,
+        env=SimpleNamespace(execution_phase_ind=0, robot=robot),
+        ref_obj=_FakeObject([0.0, 0.0, 0.0]),
+        phase_type="coordinated",
+    )
+
+    assert record["applied"] is True
+    assert "right_gripper_finger_link1" in target_pos
+    assert "right_gripper_finger_link1" in target_quat
+    target_rot = th.as_tensor(T.quat2mat(target_quat["right_gripper_finger_link1"]))
+    assert th.allclose(target_rot[:, 0], th.tensor([0.0, 1.0, 0.0]), atol=1e-5)
+
+
+def test_phase_routing_target_precontact_map_adapter_maps_eef_link_to_arm(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_APPROACH_VECTOR", "0,1,0")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FORCE_FINGER_LINK", "right_gripper_finger_link1")
+    quat = th.tensor([0.0, 0.0, 0.0, 1.0])
+    target_pos = {"right_eef_link": th.tensor([1.0, 0.0, 0.0])}
+    target_quat = {"right_eef_link": quat}
+    finger_link = _FakeLink(
+        "robot:right_gripper_finger_link1",
+        "right_gripper_finger_link1",
+    )
+    robot = SimpleNamespace(
+        eef_link_names={"right": "right_eef_link"},
+        finger_links={"right": [finger_link]},
+        links={"right_gripper_finger_link1": finger_link},
+    )
+
+    record = maybe_apply_phase_routing_target_precontact_to_maps(
+        target_pos,
+        target_quat,
+        env=SimpleNamespace(execution_phase_ind=0, robot=robot),
+        ref_obj=_FakeObject([0.0, 0.0, 0.0]),
+        phase_type="coordinated",
+    )
+
+    assert record["applied"] is True
+    assert record["arms"][0]["arm"] == "right_eef_link"
+    assert record["arms"][0]["applied"] is True
+    assert "right_gripper_finger_link1" in target_pos
 
 
 def test_phase_routing_clearance_link_goal_flows_to_explicit_nav_policy(monkeypatch):

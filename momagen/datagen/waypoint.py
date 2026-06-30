@@ -193,6 +193,75 @@ def _parse_phase_routing_clearance_link_specs(raw_value):
     return specs
 
 
+def _parse_phase_routing_vector3(raw_value, *, env_name):
+    values = [float(value.strip()) for value in (raw_value or "").split(",") if value.strip()]
+    if len(values) != 3:
+        raise ValueError(f"{env_name} must contain 3 comma-separated floats")
+    return values
+
+
+def _phase_routing_arm_for_target_key(robot, target_key):
+    if target_key in {"left", "right"}:
+        return target_key
+    if robot is not None:
+        for arm_name, eef_link_name in getattr(robot, "eef_link_names", {}).items():
+            if target_key == eef_link_name:
+                return arm_name
+    target_key = str(target_key)
+    if target_key.startswith("left_"):
+        return "left"
+    if target_key.startswith("right_"):
+        return "right"
+    return str(target_key)
+
+
+def _phase_routing_posture_quat_from_approach(
+    approach_vector,
+    *,
+    local_axis,
+    up_vector,
+    dtype,
+    device,
+):
+    axis_spec = (local_axis or "").strip().lower()
+    sign = -1.0 if axis_spec.startswith("-") else 1.0
+    axis_name = axis_spec[1:] if axis_spec.startswith(("-", "+")) else axis_spec
+    axis_to_index = {"x": 0, "y": 1, "z": 2}
+    if axis_name not in axis_to_index:
+        raise ValueError("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_AXIS only supports x/y/z with optional +/-")
+
+    primary = th.as_tensor(approach_vector, dtype=dtype, device=device)
+    primary = primary / th.linalg.norm(primary).clamp_min(1e-6)
+    primary = sign * primary
+    up = th.as_tensor(up_vector, dtype=dtype, device=device)
+    up = up / th.linalg.norm(up).clamp_min(1e-6)
+    if bool(th.linalg.norm(th.cross(primary, up, dim=0)) <= 1e-6):
+        fallback = th.tensor([0.0, 1.0, 0.0], dtype=dtype, device=device)
+        if bool(th.linalg.norm(th.cross(primary, fallback, dim=0)) <= 1e-6):
+            fallback = th.tensor([1.0, 0.0, 0.0], dtype=dtype, device=device)
+        up = fallback
+
+    axis_idx = axis_to_index[axis_name]
+    if axis_idx == 0:
+        x_axis = primary
+        y_axis = th.cross(up, x_axis, dim=0)
+        y_axis = y_axis / th.linalg.norm(y_axis).clamp_min(1e-6)
+        z_axis = th.cross(x_axis, y_axis, dim=0)
+    elif axis_idx == 1:
+        y_axis = primary
+        x_axis = th.cross(y_axis, up, dim=0)
+        x_axis = x_axis / th.linalg.norm(x_axis).clamp_min(1e-6)
+        z_axis = th.cross(x_axis, y_axis, dim=0)
+    else:
+        z_axis = primary
+        x_axis = th.cross(up, z_axis, dim=0)
+        x_axis = x_axis / th.linalg.norm(x_axis).clamp_min(1e-6)
+        y_axis = th.cross(z_axis, x_axis, dim=0)
+
+    rot = th.stack([x_axis, y_axis, z_axis], dim=-1)
+    return T.mat2quat(rot)
+
+
 def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, object_ref=None, phase_type=None, phase_logs=None):
     """Optionally adjust phase-routing targets around the referenced object."""
     if not bool(int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "0") or 0)):
@@ -295,6 +364,26 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
             clearance_link_specs = _parse_phase_routing_clearance_link_specs(clearance_link_specs_raw)
         except ValueError as exc:
             return _record_and_return(target_pose, str(exc))
+    posture_enabled = bool(int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE", "0") or 0))
+    posture_axis = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_AXIS", "-z") or "-z").strip().lower()
+    posture_links_raw = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_LINKS", "active") or "active").strip()
+    posture_source = (
+        os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_SOURCE", "approach_vector") or "approach_vector"
+    ).strip().lower()
+    posture_keep_roll = bool(int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_KEEP_ROLL", "0") or 0))
+    posture_up_vector = [0.0, 0.0, 1.0]
+    if posture_enabled:
+        if posture_keep_roll:
+            return _record_and_return(target_pose, "posture_keep_roll_not_supported")
+        if posture_source not in {"approach_vector", "ref_to_target"}:
+            return _record_and_return(target_pose, "invalid_posture_source")
+        try:
+            posture_up_vector = _parse_phase_routing_vector3(
+                os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_UP", "0,0,1"),
+                env_name="MOMAGEN_PHASE_ROUTING_TARGET_POSTURE_UP",
+            )
+        except ValueError as exc:
+            return _record_and_return(target_pose, str(exc))
     active_arms_raw = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "auto") or "auto").strip()
     if active_arms_raw.lower() == "auto":
         active_arms = set(target_pose.keys())
@@ -325,7 +414,8 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
         robot = getattr(getattr(env, "env", None), "robots", [None])[0]
 
     for arm_name, pose in list(target_pose.items()):
-        if arm_name not in active_arms:
+        active_arm_name = _phase_routing_arm_for_target_key(robot, arm_name)
+        if active_arm_name not in active_arms:
             arm_records.append({"arm": arm_name, "applied": False, "reason": "arm_not_active"})
             continue
         try:
@@ -388,7 +478,7 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
             adjusted_pose[arm_name] = (adjusted_pos, quat)
             finger_link_goal_record = None
             if finger_link_goal_enabled:
-                finger_links = getattr(robot, "finger_links", {}).get(arm_name, []) if robot is not None else []
+                finger_links = getattr(robot, "finger_links", {}).get(active_arm_name, []) if robot is not None else []
                 finger_records = []
                 for finger_link in finger_links:
                     finger_name = getattr(finger_link, "name", str(finger_link))
@@ -515,6 +605,83 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
         except Exception as e:
             arm_records.append({"arm": arm_name, "applied": False, "reason": f"{type(e).__name__}: {e}"})
 
+    posture_records = []
+    if posture_enabled:
+        if posture_links_raw.lower() in {"", "active"}:
+            posture_links = [
+                key
+                for key in adjusted_pose.keys()
+                if key in target_pose
+                and _phase_routing_arm_for_target_key(robot, key) in active_arms
+            ]
+        else:
+            posture_links = [value.strip() for value in posture_links_raw.split(",") if value.strip()]
+        if not posture_links:
+            posture_records.append({"applied": False, "reason": "no_posture_links"})
+        for link_name in posture_links:
+            if link_name not in adjusted_pose:
+                posture_records.append({"link": link_name, "applied": False, "reason": "missing_target_link"})
+                continue
+            try:
+                pos, quat = adjusted_pose[link_name]
+                pos_tensor = th.as_tensor(pos)
+                if not th.is_floating_point(pos_tensor):
+                    pos_tensor = pos_tensor.float()
+                ref_pos = th.as_tensor(ref_pos_np[:3], dtype=pos_tensor.dtype, device=pos_tensor.device)
+                if posture_source == "approach_vector":
+                    if approach_vector_values is None:
+                        posture_records.append(
+                            {"link": link_name, "applied": False, "reason": "missing_approach_vector"}
+                        )
+                        continue
+                    approach = th.tensor(approach_vector_values, dtype=pos_tensor.dtype, device=pos_tensor.device)
+                    if approach_vector_frame in {"marker", "ref"}:
+                        if ref_quat_raw is None:
+                            posture_records.append(
+                                {
+                                    "link": link_name,
+                                    "applied": False,
+                                    "reason": "missing_ref_quat_for_posture_approach",
+                                }
+                            )
+                            continue
+                        ref_quat = th.as_tensor(ref_quat_raw, dtype=pos_tensor.dtype, device=pos_tensor.device)
+                        ref_rot = th.as_tensor(T.quat2mat(ref_quat), dtype=pos_tensor.dtype, device=pos_tensor.device)
+                        approach = ref_rot @ approach
+                else:
+                    approach = pos_tensor[0] - ref_pos if pos_tensor.ndim == 2 else pos_tensor - ref_pos
+                if bool(th.linalg.norm(approach) <= eps):
+                    posture_records.append({"link": link_name, "applied": False, "reason": "zero_posture_approach"})
+                    continue
+                posture_quat = _phase_routing_posture_quat_from_approach(
+                    approach,
+                    local_axis=posture_axis,
+                    up_vector=posture_up_vector,
+                    dtype=pos_tensor.dtype,
+                    device=pos_tensor.device,
+                )
+                if pos_tensor.ndim == 2:
+                    posture_quat = posture_quat.repeat(pos_tensor.shape[0], 1)
+                if hasattr(quat, "detach"):
+                    posture_quat = posture_quat.to(dtype=quat.dtype, device=quat.device)
+                elif isinstance(quat, np.ndarray):
+                    posture_quat = posture_quat.detach().cpu().numpy().astype(quat.dtype, copy=False)
+                adjusted_pose[link_name] = (pos, posture_quat)
+                any_applied = True
+                posture_records.append(
+                    {
+                        "link": link_name,
+                        "applied": True,
+                        "source": posture_source,
+                        "axis": posture_axis,
+                        "up": posture_up_vector,
+                        "approach_vector_world": _debug_to_np(approach).tolist(),
+                        "target_quat": _debug_to_np(posture_quat).tolist(),
+                    }
+                )
+            except Exception as e:
+                posture_records.append({"link": link_name, "applied": False, "reason": f"{type(e).__name__}: {e}"})
+
     record.update(
         {
             "applied": bool(any_applied),
@@ -530,6 +697,14 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
             "finger_link_goal_z": finger_link_goal_z,
             "clearance_link_specs": clearance_link_specs,
             "clearance_link_frame": clearance_link_frame,
+            "posture": {
+                "enabled": posture_enabled,
+                "source": posture_source,
+                "axis": posture_axis,
+                "links": posture_links_raw,
+                "up": posture_up_vector,
+                "records": posture_records,
+            },
             "active_arms": sorted(active_arms),
             "arms": arm_records,
         }
@@ -537,6 +712,39 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
     if not any_applied:
         record["reason"] = "no_arm_adjusted"
     return _record_and_return(adjusted_pose)
+
+
+def maybe_apply_phase_routing_target_precontact_to_maps(
+    target_pos,
+    target_quat,
+    *,
+    env,
+    ref_obj,
+    object_ref=None,
+    phase_type=None,
+    phase_logs=None,
+):
+    target_pose = {key: (target_pos[key], target_quat[key]) for key in target_pos.keys() if key in target_quat}
+    adjusted_pose, record = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=env,
+        ref_obj=ref_obj,
+        object_ref=object_ref,
+        phase_type=phase_type,
+        phase_logs=phase_logs,
+    )
+    if record is None:
+        return None
+    if not isinstance(adjusted_pose, dict):
+        return record
+    for key, pose in adjusted_pose.items():
+        try:
+            pos, quat = pose
+        except Exception:
+            continue
+        target_pos[key] = pos
+        target_quat[key] = quat
+    return record
 
 
 def select_phase_routing_nav_eef_pose(eef_pose, selected_nav_arm):
@@ -9868,6 +10076,15 @@ class WaypointTrajectory(object):
                         del target_pos["left_eef_link"]
                         del target_quat["left_eef_link"]
 
+                maybe_apply_phase_routing_target_precontact_to_maps(
+                    target_pos,
+                    target_quat,
+                    env=env,
+                    ref_obj=ref_obj,
+                    object_ref=object_ref,
+                    phase_type=phase_type,
+                    phase_logs=phase_logs,
+                )
                 _maybe_apply_toggle_marker_target_correction(target_pos, target_quat)
                 _maybe_apply_toggle_marker_joint_staging_targets(target_pos, target_quat, emb_sel)
 
