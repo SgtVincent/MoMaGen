@@ -12,7 +12,11 @@ import momagen.utils.file_utils as MG_FileUtils
 from momagen.configs.task_spec import MG_TaskSpec
 from momagen.datagen.datagen_info import DatagenInfo
 from momagen.datagen.selection_strategy import make_selection_strategy
-from momagen.datagen.waypoint import WaypointSequence, WaypointTrajectory
+from momagen.datagen.waypoint import (
+    WaypointSequence,
+    WaypointTrajectory,
+    maybe_apply_phase_routing_target_precontact,
+)
 
 import omnigibson as og
 import omnigibson.utils.transform_utils as T
@@ -900,6 +904,14 @@ class DataGenerator(object):
                             eef_pose = {"right": (right_waypoint_pos, right_waypoint_ori)}
                         else:
                             eef_pose = {"left": (left_waypoint_pos, left_waypoint_ori), "right": (right_waypoint_pos, right_waypoint_ori)}
+                        eef_pose, _ = maybe_apply_phase_routing_target_precontact(
+                            eef_pose,
+                            env=env,
+                            ref_obj=ref_obj,
+                            object_ref=object_ref,
+                            phase_type=phase_type,
+                            phase_logs=phase_logs,
+                        )
 
                         # Check reachability. Three options:
                         # 1. [USING THIS FOR NOW] Use IK check with collision and only use the last MP waypoint (not replay waypoints as those could have contacts/collisions with the world)

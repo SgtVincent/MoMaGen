@@ -165,6 +165,128 @@ def _debug_to_np(x):
     return np.asarray(x, dtype=float)
 
 
+def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, object_ref=None, phase_type=None, phase_logs=None):
+    """Optionally move phase-routing EEF targets slightly away from the referenced object."""
+    if not bool(int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "0") or 0)):
+        return target_pose, None
+
+    phase = int(getattr(env, "execution_phase_ind", 0))
+    min_phase = int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_MIN_PHASE", "0") or 0)
+    max_phase = int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_MAX_PHASE", "999999") or 999999)
+    record = {
+        "enabled": True,
+        "phase": phase,
+        "phase_type": phase_type,
+        "object_ref": object_ref,
+        "min_phase": min_phase,
+        "max_phase": max_phase,
+    }
+
+    def _record_and_return(adjusted_pose, reason=None):
+        if reason is not None:
+            record.setdefault("applied", False)
+            record["reason"] = reason
+        if phase_logs is not None:
+            phase_logs.setdefault(phase, {}).setdefault("phase_routing_target_precontact", []).append(record)
+        print("[MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT] " + json.dumps(record, default=str), flush=True)
+        return adjusted_pose, record
+
+    if not (min_phase <= phase <= max_phase):
+        return _record_and_return(target_pose, "phase_out_of_range")
+    if ref_obj is None:
+        return _record_and_return(target_pose, "missing_ref_obj")
+    if not isinstance(target_pose, dict):
+        return _record_and_return(target_pose, "target_pose_not_dict")
+
+    ref_mode = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_REF_MODE", "marker") or "marker").strip().lower()
+    ref_source = "object"
+    try:
+        if ref_mode == "marker" and object_states.ToggledOn in getattr(ref_obj, "states", {}):
+            marker = getattr(ref_obj.states[object_states.ToggledOn], "visual_marker", None)
+            if marker is not None:
+                ref_pos_raw, _ = marker.get_position_orientation()
+                ref_source = "marker"
+            else:
+                ref_pos_raw, _ = ref_obj.get_position_orientation()
+        else:
+            ref_pos_raw, _ = ref_obj.get_position_orientation()
+    except Exception as e:
+        return _record_and_return(target_pose, f"ref_pose_error:{type(e).__name__}: {e}")
+
+    distance = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_DISTANCE", "0.0") or 0.0)
+    z_offset = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_Z", "0.0") or 0.0)
+    active_arms_raw = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "auto") or "auto").strip()
+    if active_arms_raw.lower() == "auto":
+        active_arms = set(target_pose.keys())
+    else:
+        active_arms = {value.strip() for value in active_arms_raw.split(",") if value.strip()}
+    if not active_arms:
+        return _record_and_return(target_pose, "no_active_arms")
+
+    adjusted_pose = dict(target_pose)
+    ref_pos_np = _debug_to_np(ref_pos_raw)
+    if ref_pos_np is None or ref_pos_np.shape[0] < 3 or not np.isfinite(ref_pos_np[:3]).all():
+        return _record_and_return(target_pose, "invalid_ref_pos")
+
+    arm_records = []
+    any_applied = False
+    eps = 1e-6
+    for arm_name, pose in target_pose.items():
+        if arm_name not in active_arms:
+            arm_records.append({"arm": arm_name, "applied": False, "reason": "arm_not_active"})
+            continue
+        try:
+            pos, quat = pose
+            pos_tensor = th.as_tensor(pos)
+            original_dtype = pos_tensor.dtype
+            original_device = pos_tensor.device
+            if not th.is_floating_point(pos_tensor):
+                pos_tensor = pos_tensor.float()
+            ref_pos = th.as_tensor(ref_pos_np[:3], dtype=pos_tensor.dtype, device=pos_tensor.device)
+            direction = pos_tensor - ref_pos
+            norm = th.linalg.norm(direction, dim=-1, keepdim=True)
+            if bool(th.any(norm <= eps)):
+                arm_records.append({"arm": arm_name, "applied": False, "reason": "zero_ref_to_target_direction"})
+                continue
+            unit_direction = direction / norm.clamp_min(eps)
+            z_delta = th.zeros_like(pos_tensor)
+            z_delta[..., 2] = z_offset
+            adjusted_pos = pos_tensor + distance * unit_direction + z_delta
+            if hasattr(pos, "detach"):
+                adjusted_pos = adjusted_pos.to(dtype=original_dtype, device=original_device)
+            elif isinstance(pos, np.ndarray):
+                adjusted_pos = adjusted_pos.detach().cpu().numpy().astype(pos.dtype, copy=False)
+            adjusted_pose[arm_name] = (adjusted_pos, quat)
+            any_applied = True
+            arm_records.append(
+                {
+                    "arm": arm_name,
+                    "applied": True,
+                    "original_pos": _debug_to_np(pos).tolist(),
+                    "adjusted_pos": _debug_to_np(adjusted_pos).tolist(),
+                    "delta_norm": float(th.linalg.norm(adjusted_pos - pos_tensor).item()),
+                }
+            )
+        except Exception as e:
+            arm_records.append({"arm": arm_name, "applied": False, "reason": f"{type(e).__name__}: {e}"})
+
+    record.update(
+        {
+            "applied": bool(any_applied),
+            "ref_mode": ref_mode,
+            "ref_source": ref_source,
+            "ref_pos": ref_pos_np[:3].tolist(),
+            "distance": distance,
+            "z_offset": z_offset,
+            "active_arms": sorted(active_arms),
+            "arms": arm_records,
+        }
+    )
+    if not any_applied:
+        record["reason"] = "no_arm_adjusted"
+    return _record_and_return(adjusted_pose)
+
+
 def _joint_error_summary_by_group(robot, current_q, target_q):
     """Summarize joint tracking error by robot control group."""
     current_q = th.as_tensor(current_q).detach().cpu().float()
@@ -8558,6 +8680,14 @@ class WaypointTrajectory(object):
                 "left": (left_waypoint_pos[0], left_waypoint_ori[0]),
                 "right": (right_waypoint_pos[0], right_waypoint_ori[0])
             }
+            eef_pose, _ = maybe_apply_phase_routing_target_precontact(
+                eef_pose,
+                env=env,
+                ref_obj=ref_obj,
+                object_ref=object_ref,
+                phase_type=phase_type,
+                phase_logs=phase_logs,
+            )
 
             if enable_marker_vis:
                 env.eef_current_marker_left.set_position_orientation(*robot.get_eef_pose("left"))
