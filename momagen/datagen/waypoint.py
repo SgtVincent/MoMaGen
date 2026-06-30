@@ -434,6 +434,17 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
     return _record_and_return(adjusted_pose)
 
 
+def select_phase_routing_nav_eef_pose(eef_pose, selected_nav_arm):
+    """Select nav EEF targets while preserving explicit robot-link targets."""
+    if selected_nav_arm == "both":
+        return eef_pose
+    if selected_nav_arm not in {"left", "right"}:
+        raise ValueError(f"Unsupported selected_nav_arm {selected_nav_arm!r}")
+    selected_pose = {selected_nav_arm: eef_pose[selected_nav_arm]}
+    selected_pose.update({key: value for key, value in eef_pose.items() if key not in {"left", "right"}})
+    return selected_pose
+
+
 def _joint_error_summary_by_group(robot, current_q, target_q):
     """Summarize joint tracking error by robot control group."""
     current_q = th.as_tensor(current_q).detach().cpu().float()
@@ -8965,13 +8976,11 @@ class WaypointTrajectory(object):
                 nav_debug_originals = None
                 if object_ref["arm_right"] is None:
                     selected_nav_arm = "left"
-                    eef_pose_arg = {"left": eef_pose["left"]}
                 elif object_ref["arm_left"] is None:
                     selected_nav_arm = "right"
-                    eef_pose_arg = {"right": eef_pose["right"]}
                 else:
                     selected_nav_arm = "both"
-                    eef_pose_arg = eef_pose
+                eef_pose_arg = select_phase_routing_nav_eef_pose(eef_pose, selected_nav_arm)
                 # OG's primitive exposes arm as a read-only view of robot.default_arm.  Do not mutate it here; the
                 # BASE planner now detects attached objects across all gripper arms instead of relying on that
                 # default-arm view.

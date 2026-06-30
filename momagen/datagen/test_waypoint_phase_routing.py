@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import torch as th
 
-from momagen.datagen.waypoint import maybe_apply_phase_routing_target_precontact
+from momagen.datagen.waypoint import maybe_apply_phase_routing_target_precontact, select_phase_routing_nav_eef_pose
 
 
 class _FakeObject:
@@ -154,3 +154,18 @@ def test_phase_routing_target_precontact_can_add_finger_link_goal(monkeypatch):
     assert record["arms"][0]["finger_link_goal"]["link"] == "right_gripper_finger_link1"
     assert record["arms"][0]["finger_link_goal"]["distance"] == 0.03
     assert record["arms"][0]["finger_link_goal"]["marker_local_offset"] == [0.01, 0.02, 0.0]
+
+
+def test_select_phase_routing_nav_eef_pose_preserves_explicit_link_targets():
+    left_pose = (th.tensor([0.0, 1.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
+    right_pose = (th.tensor([1.0, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
+    finger_pose = (th.tensor([0.2, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
+    eef_pose = {
+        "left": left_pose,
+        "right": right_pose,
+        "right_gripper_finger_link1": finger_pose,
+    }
+
+    selected = select_phase_routing_nav_eef_pose(eef_pose, "right")
+
+    assert selected == {"right": right_pose, "right_gripper_finger_link1": finger_pose}
