@@ -218,6 +218,9 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
     finger_link_goal_enabled = bool(
         int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL", "0") or 0)
     )
+    finger_link_goal_distance = float(
+        os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_DISTANCE", "0.0") or 0.0
+    )
     finger_link_goal_z = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_Z", "0.0") or 0.0)
     force_finger_link = (
         os.environ.get(
@@ -293,7 +296,7 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
                         dtype=pos_tensor.dtype,
                         device=pos_tensor.device,
                     )
-                    finger_target_pos = ref_pos + th.tensor(
+                    finger_target_pos = ref_pos + finger_link_goal_distance * unit_direction + th.tensor(
                         [0.0, 0.0, finger_link_goal_z],
                         dtype=pos_tensor.dtype,
                         device=pos_tensor.device,
@@ -311,6 +314,7 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
                         "enabled": True,
                         "applied": True,
                         "link": finger_body_name,
+                        "distance": finger_link_goal_distance,
                         "target_pos": _debug_to_np(finger_target_pos).tolist(),
                         "target_quat": _debug_to_np(finger_quat).tolist(),
                     }
@@ -344,6 +348,7 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
             "distance": distance,
             "z_offset": z_offset,
             "finger_link_goal_enabled": finger_link_goal_enabled,
+            "finger_link_goal_distance": finger_link_goal_distance,
             "finger_link_goal_z": finger_link_goal_z,
             "active_arms": sorted(active_arms),
             "arms": arm_records,

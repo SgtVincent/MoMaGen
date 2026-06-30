@@ -89,6 +89,7 @@ def test_phase_routing_target_precontact_can_add_finger_link_goal(monkeypatch):
     monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_DISTANCE", "0.1")
     monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
     monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_DISTANCE", "0.03")
     monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_Z", "0.02")
     monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FORCE_FINGER_LINK", "right_gripper_finger_link1")
     quat = th.tensor([0.0, 0.0, 0.0, 1.0])
@@ -110,7 +111,8 @@ def test_phase_routing_target_precontact_can_add_finger_link_goal(monkeypatch):
 
     assert th.allclose(adjusted["right"][0], th.tensor([1.1, 0.0, 0.0]))
     assert "right_gripper_finger_link1" in adjusted
-    assert th.allclose(adjusted["right_gripper_finger_link1"][0], th.tensor([0.0, 0.0, 0.02]))
+    assert th.allclose(adjusted["right_gripper_finger_link1"][0], th.tensor([0.03, 0.0, 0.02]))
     assert th.allclose(adjusted["right_gripper_finger_link1"][1], quat)
     assert record["arms"][0]["finger_link_goal"]["applied"] is True
     assert record["arms"][0]["finger_link_goal"]["link"] == "right_gripper_finger_link1"
+    assert record["arms"][0]["finger_link_goal"]["distance"] == 0.03
