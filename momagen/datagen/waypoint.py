@@ -166,7 +166,7 @@ def _debug_to_np(x):
 
 
 def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, object_ref=None, phase_type=None, phase_logs=None):
-    """Optionally move phase-routing EEF targets slightly away from the referenced object."""
+    """Optionally adjust phase-routing targets around the referenced object."""
     if not bool(int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "0") or 0)):
         return target_pose, None
 
@@ -215,6 +215,17 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
 
     distance = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_DISTANCE", "0.0") or 0.0)
     z_offset = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_Z", "0.0") or 0.0)
+    finger_link_goal_enabled = bool(
+        int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL", "0") or 0)
+    )
+    finger_link_goal_z = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_Z", "0.0") or 0.0)
+    force_finger_link = (
+        os.environ.get(
+            "MOMAGEN_PHASE_ROUTING_TARGET_FORCE_FINGER_LINK",
+            os.environ.get("MOMAGEN_TOGGLE_MARKER_TARGET_FORCE_FINGER_LINK", ""),
+        )
+        or ""
+    ).strip()
     active_arms_raw = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "auto") or "auto").strip()
     if active_arms_raw.lower() == "auto":
         active_arms = set(target_pose.keys())
@@ -231,7 +242,11 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
     arm_records = []
     any_applied = False
     eps = 1e-6
-    for arm_name, pose in target_pose.items():
+    robot = getattr(env, "robot", None)
+    if robot is None:
+        robot = getattr(getattr(env, "env", None), "robots", [None])[0]
+
+    for arm_name, pose in list(target_pose.items()):
         if arm_name not in active_arms:
             arm_records.append({"arm": arm_name, "applied": False, "reason": "arm_not_active"})
             continue
@@ -257,16 +272,66 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
             elif isinstance(pos, np.ndarray):
                 adjusted_pos = adjusted_pos.detach().cpu().numpy().astype(pos.dtype, copy=False)
             adjusted_pose[arm_name] = (adjusted_pos, quat)
+            finger_link_goal_record = None
+            if finger_link_goal_enabled:
+                finger_links = getattr(robot, "finger_links", {}).get(arm_name, []) if robot is not None else []
+                finger_records = []
+                for finger_link in finger_links:
+                    finger_name = getattr(finger_link, "name", str(finger_link))
+                    if force_finger_link and force_finger_link != finger_name and force_finger_link not in finger_name:
+                        continue
+                    finger_body_name = getattr(finger_link, "body_name", None)
+                    if finger_body_name is None:
+                        finger_body_name = str(finger_name).split(":")[-1]
+                    if robot is not None and finger_body_name not in getattr(robot, "links", {}):
+                        continue
+                    finger_records.append((finger_link, finger_body_name))
+                if finger_records:
+                    finger_link, finger_body_name = finger_records[0]
+                    finger_quat = th.as_tensor(
+                        finger_link.get_position_orientation()[1],
+                        dtype=pos_tensor.dtype,
+                        device=pos_tensor.device,
+                    )
+                    finger_target_pos = ref_pos + th.tensor(
+                        [0.0, 0.0, finger_link_goal_z],
+                        dtype=pos_tensor.dtype,
+                        device=pos_tensor.device,
+                    )
+                    if pos_tensor.ndim == 2:
+                        finger_target_pos = finger_target_pos.repeat(pos_tensor.shape[0], 1)
+                        finger_quat = finger_quat.repeat(pos_tensor.shape[0], 1)
+                    if hasattr(pos, "detach"):
+                        finger_target_pos = finger_target_pos.to(dtype=original_dtype, device=original_device)
+                        finger_quat = finger_quat.to(dtype=quat.dtype, device=quat.device) if hasattr(quat, "dtype") else finger_quat
+                    elif isinstance(pos, np.ndarray):
+                        finger_target_pos = finger_target_pos.detach().cpu().numpy().astype(pos.dtype, copy=False)
+                    adjusted_pose[finger_body_name] = (finger_target_pos, finger_quat)
+                    finger_link_goal_record = {
+                        "enabled": True,
+                        "applied": True,
+                        "link": finger_body_name,
+                        "target_pos": _debug_to_np(finger_target_pos).tolist(),
+                        "target_quat": _debug_to_np(finger_quat).tolist(),
+                    }
+                else:
+                    finger_link_goal_record = {
+                        "enabled": True,
+                        "applied": False,
+                        "reason": "missing_matching_finger_link",
+                        "force_finger_link": force_finger_link,
+                    }
             any_applied = True
-            arm_records.append(
-                {
-                    "arm": arm_name,
-                    "applied": True,
-                    "original_pos": _debug_to_np(pos).tolist(),
-                    "adjusted_pos": _debug_to_np(adjusted_pos).tolist(),
-                    "delta_norm": float(th.linalg.norm(adjusted_pos - pos_tensor).item()),
-                }
-            )
+            arm_record = {
+                "arm": arm_name,
+                "applied": True,
+                "original_pos": _debug_to_np(pos).tolist(),
+                "adjusted_pos": _debug_to_np(adjusted_pos).tolist(),
+                "delta_norm": float(th.linalg.norm(adjusted_pos - pos_tensor).item()),
+            }
+            if finger_link_goal_record is not None:
+                arm_record["finger_link_goal"] = finger_link_goal_record
+            arm_records.append(arm_record)
         except Exception as e:
             arm_records.append({"arm": arm_name, "applied": False, "reason": f"{type(e).__name__}: {e}"})
 
@@ -278,6 +343,8 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
             "ref_pos": ref_pos_np[:3].tolist(),
             "distance": distance,
             "z_offset": z_offset,
+            "finger_link_goal_enabled": finger_link_goal_enabled,
+            "finger_link_goal_z": finger_link_goal_z,
             "active_arms": sorted(active_arms),
             "arms": arm_records,
         }
