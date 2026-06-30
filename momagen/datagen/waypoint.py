@@ -200,16 +200,17 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
 
     ref_mode = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_REF_MODE", "marker") or "marker").strip().lower()
     ref_source = "object"
+    ref_quat_raw = None
     try:
         if ref_mode == "marker" and object_states.ToggledOn in getattr(ref_obj, "states", {}):
             marker = getattr(ref_obj.states[object_states.ToggledOn], "visual_marker", None)
             if marker is not None:
-                ref_pos_raw, _ = marker.get_position_orientation()
+                ref_pos_raw, ref_quat_raw = marker.get_position_orientation()
                 ref_source = "marker"
             else:
-                ref_pos_raw, _ = ref_obj.get_position_orientation()
+                ref_pos_raw, ref_quat_raw = ref_obj.get_position_orientation()
         else:
-            ref_pos_raw, _ = ref_obj.get_position_orientation()
+            ref_pos_raw, ref_quat_raw = ref_obj.get_position_orientation()
     except Exception as e:
         return _record_and_return(target_pose, f"ref_pose_error:{type(e).__name__}: {e}")
 
@@ -222,6 +223,22 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
         os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_DISTANCE", "0.0") or 0.0
     )
     finger_link_goal_z = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_Z", "0.0") or 0.0)
+    finger_link_marker_local_offset_raw = (
+        os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_MARKER_LOCAL_OFFSET", "") or ""
+    ).strip()
+    finger_link_marker_local_offset = None
+    if finger_link_marker_local_offset_raw:
+        finger_link_marker_local_offset_values = [
+            float(value.strip())
+            for value in finger_link_marker_local_offset_raw.split(",")
+            if value.strip()
+        ]
+        if len(finger_link_marker_local_offset_values) != 3:
+            return _record_and_return(
+                target_pose,
+                "invalid_finger_link_marker_local_offset",
+            )
+        finger_link_marker_local_offset = finger_link_marker_local_offset_values
     force_finger_link = (
         os.environ.get(
             "MOMAGEN_PHASE_ROUTING_TARGET_FORCE_FINGER_LINK",
@@ -261,6 +278,25 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
             if not th.is_floating_point(pos_tensor):
                 pos_tensor = pos_tensor.float()
             ref_pos = th.as_tensor(ref_pos_np[:3], dtype=pos_tensor.dtype, device=pos_tensor.device)
+            marker_local_offset_world = th.zeros(3, dtype=pos_tensor.dtype, device=pos_tensor.device)
+            if finger_link_marker_local_offset is not None:
+                if ref_quat_raw is None:
+                    arm_records.append(
+                        {
+                            "arm": arm_name,
+                            "applied": False,
+                            "reason": "missing_ref_quat_for_marker_local_offset",
+                        }
+                    )
+                    continue
+                marker_quat = th.as_tensor(ref_quat_raw, dtype=pos_tensor.dtype, device=pos_tensor.device)
+                marker_rot = th.as_tensor(T.quat2mat(marker_quat), dtype=pos_tensor.dtype, device=pos_tensor.device)
+                marker_local_offset = th.tensor(
+                    finger_link_marker_local_offset,
+                    dtype=pos_tensor.dtype,
+                    device=pos_tensor.device,
+                )
+                marker_local_offset_world = marker_rot @ marker_local_offset
             direction = pos_tensor - ref_pos
             norm = th.linalg.norm(direction, dim=-1, keepdim=True)
             if bool(th.any(norm <= eps)):
@@ -296,7 +332,7 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
                         dtype=pos_tensor.dtype,
                         device=pos_tensor.device,
                     )
-                    finger_target_pos = ref_pos + finger_link_goal_distance * unit_direction + th.tensor(
+                    finger_target_pos = ref_pos + marker_local_offset_world + finger_link_goal_distance * unit_direction + th.tensor(
                         [0.0, 0.0, finger_link_goal_z],
                         dtype=pos_tensor.dtype,
                         device=pos_tensor.device,
@@ -315,6 +351,8 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
                         "applied": True,
                         "link": finger_body_name,
                         "distance": finger_link_goal_distance,
+                        "marker_local_offset": finger_link_marker_local_offset,
+                        "marker_local_offset_world": _debug_to_np(marker_local_offset_world).tolist(),
                         "target_pos": _debug_to_np(finger_target_pos).tolist(),
                         "target_quat": _debug_to_np(finger_quat).tolist(),
                     }
