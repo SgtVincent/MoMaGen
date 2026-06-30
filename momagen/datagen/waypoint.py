@@ -226,6 +226,11 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
     finger_link_goal_distance = float(
         os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_DISTANCE", "0.0") or 0.0
     )
+    nav_finger_link_goal_distance_raw = (
+        os.environ.get("MOMAGEN_PHASE_ROUTING_NAV_FINGER_LINK_GOAL_DISTANCE", "") or ""
+    ).strip()
+    if nav_finger_link_goal_distance_raw and phase_type == "navigation":
+        finger_link_goal_distance = float(nav_finger_link_goal_distance_raw)
     finger_link_goal_z = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_Z", "0.0") or 0.0)
     finger_link_marker_local_offset_raw = (
         os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_MARKER_LOCAL_OFFSET", "") or ""

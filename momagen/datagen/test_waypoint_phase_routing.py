@@ -156,6 +156,65 @@ def test_phase_routing_target_precontact_can_add_finger_link_goal(monkeypatch):
     assert record["arms"][0]["finger_link_goal"]["marker_local_offset"] == [0.01, 0.02, 0.0]
 
 
+def test_phase_routing_target_precontact_nav_can_override_finger_link_distance(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_DISTANCE", "0.03")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_NAV_FINGER_LINK_GOAL_DISTANCE", "0.12")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FORCE_FINGER_LINK", "right_gripper_finger_link1")
+    quat = th.tensor([0.0, 0.0, 0.0, 1.0])
+    target_pose = {"right": (th.tensor([1.0, 0.0, 0.0]), quat)}
+    finger_link = _FakeLink(
+        "robot:right_gripper_finger_link1",
+        "right_gripper_finger_link1",
+    )
+    robot = SimpleNamespace(
+        finger_links={"right": [finger_link]},
+        links={"right_gripper_finger_link1": finger_link},
+    )
+
+    adjusted, record = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=SimpleNamespace(execution_phase_ind=0, robot=robot),
+        ref_obj=_FakeObject([0.0, 0.0, 0.0]),
+        phase_type="navigation",
+    )
+
+    assert th.allclose(adjusted["right_gripper_finger_link1"][0], th.tensor([0.12, 0.0, 0.0]))
+    assert record["finger_link_goal_distance"] == 0.12
+    assert record["arms"][0]["finger_link_goal"]["distance"] == 0.12
+
+
+def test_phase_routing_target_precontact_nav_distance_override_is_navigation_only(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL_DISTANCE", "0.03")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_NAV_FINGER_LINK_GOAL_DISTANCE", "0.12")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_FORCE_FINGER_LINK", "right_gripper_finger_link1")
+    quat = th.tensor([0.0, 0.0, 0.0, 1.0])
+    target_pose = {"right": (th.tensor([1.0, 0.0, 0.0]), quat)}
+    finger_link = _FakeLink(
+        "robot:right_gripper_finger_link1",
+        "right_gripper_finger_link1",
+    )
+    robot = SimpleNamespace(
+        finger_links={"right": [finger_link]},
+        links={"right_gripper_finger_link1": finger_link},
+    )
+
+    adjusted, record = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=SimpleNamespace(execution_phase_ind=0, robot=robot),
+        ref_obj=_FakeObject([0.0, 0.0, 0.0]),
+        phase_type="uncoordinated",
+    )
+
+    assert th.allclose(adjusted["right_gripper_finger_link1"][0], th.tensor([0.03, 0.0, 0.0]))
+    assert record["finger_link_goal_distance"] == 0.03
+
+
 def test_select_phase_routing_nav_eef_pose_preserves_explicit_link_targets():
     left_pose = (th.tensor([0.0, 1.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
     right_pose = (th.tensor([1.0, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
