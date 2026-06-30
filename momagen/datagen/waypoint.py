@@ -437,12 +437,23 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
 def select_phase_routing_nav_eef_pose(eef_pose, selected_nav_arm):
     """Select nav EEF targets while preserving explicit robot-link targets."""
     if selected_nav_arm == "both":
-        return eef_pose
-    if selected_nav_arm not in {"left", "right"}:
-        raise ValueError(f"Unsupported selected_nav_arm {selected_nav_arm!r}")
-    selected_pose = {selected_nav_arm: eef_pose[selected_nav_arm]}
-    selected_pose.update({key: value for key, value in eef_pose.items() if key not in {"left", "right"}})
-    return selected_pose
+        selected_pose = eef_pose
+    else:
+        if selected_nav_arm not in {"left", "right"}:
+            raise ValueError(f"Unsupported selected_nav_arm {selected_nav_arm!r}")
+        selected_pose = {selected_nav_arm: eef_pose[selected_nav_arm]}
+        selected_pose.update({key: value for key, value in eef_pose.items() if key not in {"left", "right"}})
+
+    target_policy = (
+        os.environ.get("MOMAGEN_PHASE_ROUTING_NAV_TARGET_POLICY", "arm_and_explicit_links")
+        or "arm_and_explicit_links"
+    ).strip().lower()
+    if target_policy in {"arm_and_links", "arm_and_explicit_links", "default"}:
+        return selected_pose
+    if target_policy == "explicit_links_only":
+        explicit_link_pose = {key: value for key, value in selected_pose.items() if key not in {"left", "right"}}
+        return explicit_link_pose if explicit_link_pose else selected_pose
+    raise ValueError(f"Unsupported MOMAGEN_PHASE_ROUTING_NAV_TARGET_POLICY {target_policy!r}")
 
 
 def _joint_error_summary_by_group(robot, current_q, target_q):

@@ -169,3 +169,40 @@ def test_select_phase_routing_nav_eef_pose_preserves_explicit_link_targets():
     selected = select_phase_routing_nav_eef_pose(eef_pose, "right")
 
     assert selected == {"right": right_pose, "right_gripper_finger_link1": finger_pose}
+
+
+def test_select_phase_routing_nav_eef_pose_can_use_explicit_links_only(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_NAV_TARGET_POLICY", "explicit_links_only")
+    left_pose = (th.tensor([0.0, 1.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
+    right_pose = (th.tensor([1.0, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
+    finger_pose = (th.tensor([0.2, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
+    eef_pose = {
+        "left": left_pose,
+        "right": right_pose,
+        "right_gripper_finger_link1": finger_pose,
+    }
+
+    selected = select_phase_routing_nav_eef_pose(eef_pose, "right")
+
+    assert selected == {"right_gripper_finger_link1": finger_pose}
+
+
+def test_select_phase_routing_nav_eef_pose_explicit_links_only_falls_back_to_arm(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_NAV_TARGET_POLICY", "explicit_links_only")
+    right_pose = (th.tensor([1.0, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
+
+    selected = select_phase_routing_nav_eef_pose({"right": right_pose}, "right")
+
+    assert selected == {"right": right_pose}
+
+
+def test_select_phase_routing_nav_eef_pose_rejects_unknown_policy(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_NAV_TARGET_POLICY", "unknown")
+    right_pose = (th.tensor([1.0, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
+
+    try:
+        select_phase_routing_nav_eef_pose({"right": right_pose}, "right")
+    except ValueError as exc:
+        assert "MOMAGEN_PHASE_ROUTING_NAV_TARGET_POLICY" in str(exc)
+    else:
+        raise AssertionError("unknown nav target policies must fail closed")
