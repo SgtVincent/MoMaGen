@@ -216,6 +216,10 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
 
     distance = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_DISTANCE", "0.0") or 0.0)
     z_offset = float(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_Z", "0.0") or 0.0)
+    approach_vector_raw = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_APPROACH_VECTOR", "") or "").strip()
+    approach_vector_frame = (
+        os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_APPROACH_VECTOR_FRAME", "world") or "world"
+    ).strip().lower()
     finger_link_goal_enabled = bool(
         int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_FINGER_LINK_GOAL", "0") or 0)
     )
@@ -258,6 +262,15 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
     ref_pos_np = _debug_to_np(ref_pos_raw)
     if ref_pos_np is None or ref_pos_np.shape[0] < 3 or not np.isfinite(ref_pos_np[:3]).all():
         return _record_and_return(target_pose, "invalid_ref_pos")
+    approach_vector_values = None
+    if approach_vector_raw:
+        approach_vector_values = [float(value.strip()) for value in approach_vector_raw.split(",") if value.strip()]
+        if len(approach_vector_values) != 3:
+            return _record_and_return(target_pose, "invalid_approach_vector")
+        if approach_vector_frame not in {"world", "marker", "ref"}:
+            return _record_and_return(target_pose, "invalid_approach_vector_frame")
+        if approach_vector_frame in {"marker", "ref"} and ref_quat_raw is None:
+            return _record_and_return(target_pose, "missing_ref_quat_for_approach_vector")
 
     arm_records = []
     any_applied = False
@@ -303,6 +316,23 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
                 arm_records.append({"arm": arm_name, "applied": False, "reason": "zero_ref_to_target_direction"})
                 continue
             unit_direction = direction / norm.clamp_min(eps)
+            approach_vector_world = None
+            if approach_vector_values is not None:
+                approach_vector = th.tensor(
+                    approach_vector_values,
+                    dtype=pos_tensor.dtype,
+                    device=pos_tensor.device,
+                )
+                if approach_vector_frame in {"marker", "ref"}:
+                    ref_quat = th.as_tensor(ref_quat_raw, dtype=pos_tensor.dtype, device=pos_tensor.device)
+                    ref_rot = th.as_tensor(T.quat2mat(ref_quat), dtype=pos_tensor.dtype, device=pos_tensor.device)
+                    approach_vector = ref_rot @ approach_vector
+                approach_norm = th.linalg.norm(approach_vector)
+                if bool(approach_norm <= eps):
+                    arm_records.append({"arm": arm_name, "applied": False, "reason": "zero_approach_vector"})
+                    continue
+                unit_direction = approach_vector / approach_norm.clamp_min(eps)
+                approach_vector_world = unit_direction
             z_delta = th.zeros_like(pos_tensor)
             z_delta[..., 2] = z_offset
             adjusted_pos = pos_tensor + distance * unit_direction + z_delta
@@ -353,6 +383,9 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
                         "distance": finger_link_goal_distance,
                         "marker_local_offset": finger_link_marker_local_offset,
                         "marker_local_offset_world": _debug_to_np(marker_local_offset_world).tolist(),
+                        "approach_vector_world": _debug_to_np(approach_vector_world).tolist()
+                        if approach_vector_world is not None
+                        else None,
                         "target_pos": _debug_to_np(finger_target_pos).tolist(),
                         "target_quat": _debug_to_np(finger_quat).tolist(),
                     }
@@ -371,6 +404,8 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
                 "adjusted_pos": _debug_to_np(adjusted_pos).tolist(),
                 "delta_norm": float(th.linalg.norm(adjusted_pos - pos_tensor).item()),
             }
+            if approach_vector_world is not None:
+                arm_record["approach_vector_world"] = _debug_to_np(approach_vector_world).tolist()
             if finger_link_goal_record is not None:
                 arm_record["finger_link_goal"] = finger_link_goal_record
             arm_records.append(arm_record)
@@ -385,6 +420,8 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
             "ref_pos": ref_pos_np[:3].tolist(),
             "distance": distance,
             "z_offset": z_offset,
+            "approach_vector": approach_vector_values,
+            "approach_vector_frame": approach_vector_frame,
             "finger_link_goal_enabled": finger_link_goal_enabled,
             "finger_link_goal_distance": finger_link_goal_distance,
             "finger_link_goal_z": finger_link_goal_z,
