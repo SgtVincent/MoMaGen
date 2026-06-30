@@ -165,6 +165,34 @@ def _debug_to_np(x):
     return np.asarray(x, dtype=float)
 
 
+def _parse_phase_routing_clearance_link_specs(raw_value):
+    specs = []
+    for raw_spec in (raw_value or "").split(";"):
+        raw_spec = raw_spec.strip()
+        if not raw_spec:
+            continue
+        parts = [part.strip() for part in raw_spec.split(":")]
+        if len(parts) == 2 and parts[0]:
+            offset_parts = [part.strip() for part in parts[1].split(",")]
+        elif len(parts) == 4 and parts[0]:
+            offset_parts = parts[1:]
+        else:
+            raise ValueError(
+                "MOMAGEN_PHASE_ROUTING_TARGET_CLEARANCE_LINKS entries must be link:dx,dy,dz"
+            )
+        if len(offset_parts) != 3:
+            raise ValueError(
+                "MOMAGEN_PHASE_ROUTING_TARGET_CLEARANCE_LINKS entries must be link:dx,dy,dz"
+            )
+        specs.append(
+            {
+                "link": parts[0],
+                "offset": [float(offset_parts[0]), float(offset_parts[1]), float(offset_parts[2])],
+            }
+        )
+    return specs
+
+
 def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, object_ref=None, phase_type=None, phase_logs=None):
     """Optionally adjust phase-routing targets around the referenced object."""
     if not bool(int(os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "0") or 0)):
@@ -255,6 +283,18 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
         )
         or ""
     ).strip()
+    clearance_link_specs_raw = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_CLEARANCE_LINKS", "") or "").strip()
+    clearance_link_frame = (
+        os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_CLEARANCE_LINK_FRAME", approach_vector_frame) or "world"
+    ).strip().lower()
+    if clearance_link_frame not in {"world", "marker", "ref"}:
+        return _record_and_return(target_pose, "invalid_clearance_link_frame")
+    clearance_link_specs = []
+    if clearance_link_specs_raw:
+        try:
+            clearance_link_specs = _parse_phase_routing_clearance_link_specs(clearance_link_specs_raw)
+        except ValueError as exc:
+            return _record_and_return(target_pose, str(exc))
     active_arms_raw = (os.environ.get("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "auto") or "auto").strip()
     if active_arms_raw.lower() == "auto":
         active_arms = set(target_pose.keys())
@@ -401,6 +441,62 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
                         "reason": "missing_matching_finger_link",
                         "force_finger_link": force_finger_link,
                     }
+            clearance_link_records = []
+            for clearance_spec in clearance_link_specs:
+                link_name = clearance_spec["link"]
+                if robot is not None and link_name not in getattr(robot, "links", {}):
+                    clearance_link_records.append(
+                        {
+                            "link": link_name,
+                            "applied": False,
+                            "reason": "missing_robot_link",
+                        }
+                    )
+                    continue
+                offset_values = clearance_spec["offset"]
+                offset_world = th.tensor(offset_values, dtype=pos_tensor.dtype, device=pos_tensor.device)
+                if clearance_link_frame in {"marker", "ref"}:
+                    if ref_quat_raw is None:
+                        clearance_link_records.append(
+                            {
+                                "link": link_name,
+                                "applied": False,
+                                "reason": "missing_ref_quat_for_clearance_offset",
+                            }
+                        )
+                        continue
+                    ref_quat = th.as_tensor(ref_quat_raw, dtype=pos_tensor.dtype, device=pos_tensor.device)
+                    ref_rot = th.as_tensor(T.quat2mat(ref_quat), dtype=pos_tensor.dtype, device=pos_tensor.device)
+                    offset_world = ref_rot @ offset_world
+                target_link_pos = ref_pos + offset_world
+                try:
+                    link_quat = th.as_tensor(
+                        robot.links[link_name].get_position_orientation()[1],
+                        dtype=pos_tensor.dtype,
+                        device=pos_tensor.device,
+                    ) if robot is not None else th.as_tensor(quat, dtype=pos_tensor.dtype, device=pos_tensor.device)
+                except Exception:
+                    link_quat = th.as_tensor(quat, dtype=pos_tensor.dtype, device=pos_tensor.device)
+                if pos_tensor.ndim == 2:
+                    target_link_pos = target_link_pos.repeat(pos_tensor.shape[0], 1)
+                    link_quat = link_quat.repeat(pos_tensor.shape[0], 1)
+                if hasattr(pos, "detach"):
+                    target_link_pos = target_link_pos.to(dtype=original_dtype, device=original_device)
+                    link_quat = link_quat.to(dtype=quat.dtype, device=quat.device) if hasattr(quat, "dtype") else link_quat
+                elif isinstance(pos, np.ndarray):
+                    target_link_pos = target_link_pos.detach().cpu().numpy().astype(pos.dtype, copy=False)
+                adjusted_pose[link_name] = (target_link_pos, link_quat)
+                clearance_link_records.append(
+                    {
+                        "link": link_name,
+                        "applied": True,
+                        "offset": offset_values,
+                        "offset_frame": clearance_link_frame,
+                        "offset_world": _debug_to_np(offset_world).tolist(),
+                        "target_pos": _debug_to_np(target_link_pos).tolist(),
+                        "target_quat": _debug_to_np(link_quat).tolist(),
+                    }
+                )
             any_applied = True
             arm_record = {
                 "arm": arm_name,
@@ -413,6 +509,8 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
                 arm_record["approach_vector_world"] = _debug_to_np(approach_vector_world).tolist()
             if finger_link_goal_record is not None:
                 arm_record["finger_link_goal"] = finger_link_goal_record
+            if clearance_link_records:
+                arm_record["clearance_link_goals"] = clearance_link_records
             arm_records.append(arm_record)
         except Exception as e:
             arm_records.append({"arm": arm_name, "applied": False, "reason": f"{type(e).__name__}: {e}"})
@@ -430,6 +528,8 @@ def maybe_apply_phase_routing_target_precontact(target_pose, *, env, ref_obj, ob
             "finger_link_goal_enabled": finger_link_goal_enabled,
             "finger_link_goal_distance": finger_link_goal_distance,
             "finger_link_goal_z": finger_link_goal_z,
+            "clearance_link_specs": clearance_link_specs,
+            "clearance_link_frame": clearance_link_frame,
             "active_arms": sorted(active_arms),
             "arms": arm_records,
         }

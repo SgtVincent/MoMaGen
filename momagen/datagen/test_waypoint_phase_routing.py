@@ -215,6 +215,90 @@ def test_phase_routing_target_precontact_nav_distance_override_is_navigation_onl
     assert record["finger_link_goal_distance"] == 0.03
 
 
+def test_phase_routing_target_precontact_can_add_clearance_link_goal(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_CLEARANCE_LINKS", "right_arm_link4:0.15,-0.05,0.25")
+    quat = th.tensor([0.0, 0.0, 0.0, 1.0])
+    target_pose = {"right": (th.tensor([1.0, 0.0, 0.0]), quat)}
+    link = _FakeLink("robot:right_arm_link4", "right_arm_link4")
+    robot = SimpleNamespace(links={"right_arm_link4": link})
+
+    adjusted, record = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=SimpleNamespace(execution_phase_ind=0, robot=robot),
+        ref_obj=_FakeObject([0.5, 0.5, 0.1]),
+        phase_type="navigation",
+    )
+
+    assert "right_arm_link4" in adjusted
+    assert th.allclose(adjusted["right_arm_link4"][0], th.tensor([0.65, 0.45, 0.35]))
+    assert th.allclose(adjusted["right_arm_link4"][1], quat)
+    assert record["clearance_link_frame"] == "world"
+    assert record["arms"][0]["clearance_link_goals"][0]["applied"] is True
+    assert record["arms"][0]["clearance_link_goals"][0]["link"] == "right_arm_link4"
+
+
+def test_phase_routing_clearance_link_goal_flows_to_explicit_nav_policy(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_CLEARANCE_LINKS", "right_arm_link4:0.15,-0.05,0.25")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_NAV_TARGET_POLICY", "explicit_links_only")
+    quat = th.tensor([0.0, 0.0, 0.0, 1.0])
+    target_pose = {"right": (th.tensor([1.0, 0.0, 0.0]), quat)}
+    link = _FakeLink("robot:right_arm_link4", "right_arm_link4")
+    robot = SimpleNamespace(links={"right_arm_link4": link})
+
+    adjusted, _ = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=SimpleNamespace(execution_phase_ind=0, robot=robot),
+        ref_obj=_FakeObject([0.5, 0.5, 0.1]),
+        phase_type="navigation",
+    )
+
+    selected = select_phase_routing_nav_eef_pose(adjusted, "right")
+
+    assert selected == {"right_arm_link4": adjusted["right_arm_link4"]}
+
+
+def test_phase_routing_target_precontact_clearance_link_goal_requires_robot_link(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT_ARMS", "right")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_CLEARANCE_LINKS", "right_arm_link4:0.15,-0.05,0.25")
+    target_pose = {"right": (th.tensor([1.0, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))}
+    robot = SimpleNamespace(links={})
+
+    adjusted, record = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=SimpleNamespace(execution_phase_ind=0, robot=robot),
+        ref_obj=_FakeObject([0.5, 0.5, 0.1]),
+        phase_type="navigation",
+    )
+
+    assert "right_arm_link4" not in adjusted
+    assert record["arms"][0]["clearance_link_goals"][0] == {
+        "link": "right_arm_link4",
+        "applied": False,
+        "reason": "missing_robot_link",
+    }
+
+
+def test_phase_routing_target_precontact_clearance_link_specs_fail_closed(monkeypatch):
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_PRECONTACT", "1")
+    monkeypatch.setenv("MOMAGEN_PHASE_ROUTING_TARGET_CLEARANCE_LINKS", "right_arm_link4:0.1")
+    target_pose = {"right": (th.tensor([1.0, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))}
+
+    adjusted, record = maybe_apply_phase_routing_target_precontact(
+        target_pose,
+        env=SimpleNamespace(execution_phase_ind=0),
+        ref_obj=_FakeObject([0.5, 0.5, 0.1]),
+    )
+
+    assert adjusted is target_pose
+    assert record["applied"] is False
+    assert "MOMAGEN_PHASE_ROUTING_TARGET_CLEARANCE_LINKS" in record["reason"]
+
+
 def test_select_phase_routing_nav_eef_pose_preserves_explicit_link_targets():
     left_pose = (th.tensor([0.0, 1.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
     right_pose = (th.tensor([1.0, 0.0, 0.0]), th.tensor([0.0, 0.0, 0.0, 1.0]))
